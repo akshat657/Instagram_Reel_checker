@@ -17,7 +17,7 @@ load_dotenv()
 
 # Page config
 st.set_page_config(
-    page_title="MedReel Analyzer 💊🎥",
+    page_title="MedReel Analyzer 💊",
     page_icon="💊",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -896,8 +896,8 @@ def extract_audio_url(data: Dict[str, Any]) -> str:
 # Main App
 st.markdown("""
 <div class="title-container">
-    <h1 class="title-text">💊 MedReel Analyzer 🎥</h1>
-    <p class="subtitle-text">Drop that health influencer link, we'll drop the facts ✨</p>
+    <h1 class="title-text">💊 MedReel Analyzer </h1>
+    <p class="subtitle-text">You drop that reel link, we'll drop the facts ✨</p>
 </div>
 """, unsafe_allow_html=True)
 
