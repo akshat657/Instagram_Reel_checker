@@ -184,6 +184,11 @@ st.markdown("""
         box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
     }
     
+    /* Reset button styling */
+    .reset-button button {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+    }
+    
     /* Text visibility for both modes */
     .stMarkdown, p, span, div {
         color: var(--text-color);
@@ -206,8 +211,8 @@ st.markdown("""
     
     /* Download buttons - responsive */
     .stDownloadButton>button {
-        background: #28a745;
-        color: white;
+        background: #28a745 !important;
+        color: white !important;
         border-radius: 20px;
         padding: 0.5rem 1rem;
         margin: 0.3rem;
@@ -220,31 +225,117 @@ st.markdown("""
         margin-right: 0.5rem;
     }
     
-    /* Citation links */
+    /* Citation section - PROMINENT */
+    .citations-section {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        padding: 1.5rem;
+        border-radius: 15px;
+        margin-top: 1.5rem;
+        margin-bottom: 1.5rem;
+        border-left: 6px solid #28a745;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    }
+    
+    [data-theme="dark"] .citations-section {
+        background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
+        border-left: 6px solid #4ade80;
+    }
+    
+    .citations-title {
+        color: #28a745;
+        font-size: clamp(1.2rem, 3vw, 1.6rem);
+        font-weight: bold;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+    }
+    
+    [data-theme="dark"] .citations-title {
+        color: #4ade80;
+    }
+    
+    .citation-item {
+        background: white;
+        padding: 1rem;
+        border-radius: 10px;
+        margin-bottom: 0.8rem;
+        border-left: 4px solid #667eea;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        transition: all 0.3s;
+    }
+    
+    .citation-item:hover {
+        transform: translateX(5px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+    }
+    
+    [data-theme="dark"] .citation-item {
+        background: #2d2d2d;
+        border-left: 4px solid #4ade80;
+    }
+    
     .citation-link {
         color: #667eea;
         text-decoration: none;
         font-weight: 600;
-        border-bottom: 2px solid #667eea;
-        padding-bottom: 2px;
-        transition: all 0.3s;
+        font-size: clamp(0.9rem, 2vw, 1.05rem);
+        display: block;
+        margin-bottom: 0.5rem;
     }
     
     .citation-link:hover {
         color: #764ba2;
-        border-bottom-color: #764ba2;
+        text-decoration: underline;
     }
     
-    .citations-section {
-        background: #f8f9fa;
+    [data-theme="dark"] .citation-link {
+        color: #a78bfa;
+    }
+    
+    [data-theme="dark"] .citation-link:hover {
+        color: #c4b5fd;
+    }
+    
+    .citation-meta {
+        color: #666;
+        font-size: clamp(0.8rem, 1.8vw, 0.9rem);
+        font-style: italic;
+    }
+    
+    [data-theme="dark"] .citation-meta {
+        color: #999;
+    }
+    
+    .citation-badge {
+        display: inline-block;
+        background: #667eea;
+        color: white;
+        padding: 0.2rem 0.6rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: bold;
+        margin-right: 0.5rem;
+    }
+    
+    [data-theme="dark"] .citation-badge {
+        background: #4ade80;
+        color: #1a1a1a;
+    }
+    
+    /* No citations warning */
+    .no-citations {
+        background: #fff3cd;
+        border: 2px solid #ffc107;
         padding: 1rem;
         border-radius: 10px;
-        margin-top: 1rem;
-        border-left: 4px solid #28a745;
+        color: #856404;
+        font-weight: 500;
     }
     
-    [data-theme="dark"] .citations-section {
-        background: #2d2d2d;
+    [data-theme="dark"] .no-citations {
+        background: #3d3000;
+        border-color: #ffd966;
+        color: #ffd966;
     }
     
     /* Input fields - responsive */
@@ -258,6 +349,20 @@ st.markdown("""
         background: var(--background-color);
         padding: 1rem;
         border-radius: 10px;
+    }
+    
+    /* Info box */
+    .info-box {
+        background: #e7f3ff;
+        border-left: 4px solid #2196F3;
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 1rem 0;
+    }
+    
+    [data-theme="dark"] .info-box {
+        background: #0d2d4d;
+        border-left-color: #64b5f6;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -273,6 +378,8 @@ if 'api_response' not in st.session_state:
     st.session_state.api_response = None
 if 'citations' not in st.session_state:
     st.session_state.citations = []
+if 'analysis_done' not in st.session_state:
+    st.session_state.analysis_done = False
 
 # Configuration
 RAPIDAPI_CONFIG = {
@@ -303,6 +410,15 @@ def debug_log(message: str, data: Any = None):
             {f'<pre>{json.dumps(data, indent=2) if isinstance(data, (dict, list)) else str(data)}</pre>' if data else ''}
         </div>
         """, unsafe_allow_html=True)
+
+def reset_app():
+    """Reset the entire app state"""
+    st.session_state.chat_history = []
+    st.session_state.context = {}
+    st.session_state.citations = []
+    st.session_state.analysis_done = False
+    st.session_state.api_response = None
+    st.rerun()
 
 def get_groq_client() -> Tuple[Groq, int]:
     """Get Groq client with fallback mechanism"""
@@ -410,6 +526,9 @@ def fetch_semantic_scholar_papers(query: str) -> List[Dict[str, Any]]:
         headers = {}
         if SEMANTIC_SCHOLAR_API_KEY:
             headers["x-api-key"] = SEMANTIC_SCHOLAR_API_KEY
+            debug_log("Using Semantic Scholar API key")
+        else:
+            debug_log("No Semantic Scholar API key found - using rate-limited access")
         
         # Search for papers
         search_url = "https://api.semanticscholar.org/graph/v1/paper/search"
@@ -419,19 +538,19 @@ def fetch_semantic_scholar_papers(query: str) -> List[Dict[str, Any]]:
             "fields": "title,abstract,url,year,authors,citationCount,publicationTypes"
         }
         
-        response = requests.get(search_url, params=params, headers=headers)
+        response = requests.get(search_url, params=params, headers=headers, timeout=10)
         
         if response.status_code == 200:
             data = response.json()
             papers = data.get('data', [])
-            debug_log(f"Found {len(papers)} papers from Semantic Scholar")
+            debug_log(f"✅ Found {len(papers)} papers from Semantic Scholar", {"papers": [p.get('title', '') for p in papers]})
             return papers
         else:
-            debug_log("Semantic Scholar API error", {"status": response.status_code})
+            debug_log(f"❌ Semantic Scholar API error - Status: {response.status_code}", {"response": response.text[:200]})
             return []
             
     except Exception as e:
-        debug_log("Semantic Scholar search error", {"error": str(e)})
+        debug_log("❌ Semantic Scholar search error", {"error": str(e), "type": type(e).__name__})
         return []
 
 def fetch_medical_info(query: str) -> Tuple[str, List[Dict[str, str]]]:
@@ -439,9 +558,10 @@ def fetch_medical_info(query: str) -> Tuple[str, List[Dict[str, str]]]:
     citations = []
     
     try:
-        debug_log("Fetching medical info", {"query": query})
+        debug_log("🔍 Starting medical info search", {"query": query})
         
         # PubMed search
+        st.info("🔍 Searching PubMed database...")
         base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
         params = {
             "db": "pubmed",
@@ -450,13 +570,13 @@ def fetch_medical_info(query: str) -> Tuple[str, List[Dict[str, str]]]:
             "retmode": "json"
         }
         
-        response = requests.get(base_url, params=params)
+        response = requests.get(base_url, params=params, timeout=10)
         pubmed_results = []
         
         if response.status_code == 200:
             data = response.json()
             pmids = data.get('esearchresult', {}).get('idlist', [])
-            debug_log("PubMed search results", {"pmids": pmids})
+            debug_log("✅ PubMed search results", {"pmids": pmids, "count": len(pmids)})
             
             if pmids:
                 # Fetch summaries
@@ -466,7 +586,7 @@ def fetch_medical_info(query: str) -> Tuple[str, List[Dict[str, str]]]:
                     "id": ",".join(pmids),
                     "retmode": "json"
                 }
-                summary_response = requests.get(summary_url, params=summary_params)
+                summary_response = requests.get(summary_url, params=summary_params, timeout=10)
                 if summary_response.status_code == 200:
                     summaries = summary_response.json()
                     for pmid in pmids:
@@ -478,10 +598,17 @@ def fetch_medical_info(query: str) -> Tuple[str, List[Dict[str, str]]]:
                             citations.append({
                                 "title": title,
                                 "url": pubmed_url,
-                                "source": "PubMed"
+                                "source": "PubMed",
+                                "id": pmid
                             })
+                            debug_log(f"✅ Added PubMed citation: {title[:50]}...")
+                else:
+                    debug_log(f"❌ PubMed summary fetch failed - Status: {summary_response.status_code}")
+        else:
+            debug_log(f"❌ PubMed search failed - Status: {response.status_code}")
         
         # Semantic Scholar search
+        st.info("🔍 Searching Semantic Scholar database...")
         semantic_papers = fetch_semantic_scholar_papers(query)
         semantic_results = []
         
@@ -495,8 +622,9 @@ def fetch_medical_info(query: str) -> Tuple[str, List[Dict[str, str]]]:
                     "title": title,
                     "url": url,
                     "source": "Semantic Scholar",
-                    "year": year
+                    "year": str(year)
                 })
+                debug_log(f"✅ Added Semantic Scholar citation: {title[:50]}...")
         
         # Combine results
         all_results = []
@@ -505,13 +633,18 @@ def fetch_medical_info(query: str) -> Tuple[str, List[Dict[str, str]]]:
         if semantic_results:
             all_results.extend(semantic_results[:3])
         
-        debug_log("Medical references found", {"count": len(citations)})
+        debug_log(f"📚 Total citations found: {len(citations)}", {
+            "pubmed": len(pubmed_results),
+            "semantic_scholar": len(semantic_results),
+            "total": len(citations)
+        })
         
         result_text = "\n".join(all_results) if all_results else "No medical references found"
         return result_text, citations
         
     except Exception as e:
-        debug_log("Medical search error", {"error": str(e)})
+        debug_log("❌ Medical search error", {"error": str(e), "type": type(e).__name__})
+        st.error(f"Medical search error: {str(e)}")
         return f"Medical search error: {str(e)}", citations
 
 def format_analysis_with_proper_markdown(text: str) -> str:
@@ -528,15 +661,15 @@ def format_analysis_with_proper_markdown(text: str) -> str:
         stripped = line.strip()
         if stripped.startswith('* '):
             if not in_list:
-                formatted_lines.append('<ul>')
+                formatted_lines.append('<ul style="margin-left: 1.5rem;">')
                 in_list = True
-            formatted_lines.append(f'<li>{stripped[2:]}</li>')
+            formatted_lines.append(f'<li style="margin-bottom: 0.5rem;">{stripped[2:]}</li>')
         else:
             if in_list:
                 formatted_lines.append('</ul>')
                 in_list = False
             if stripped:
-                formatted_lines.append(f'<p>{stripped}</p>')
+                formatted_lines.append(f'<p style="margin-bottom: 0.8rem;">{stripped}</p>')
     
     if in_list:
         formatted_lines.append('</ul>')
@@ -547,13 +680,20 @@ def analyze_with_llm(caption: str, transcript: str) -> Tuple[str, List[Dict[str,
     """Analyze content with Groq LLM and return formatted analysis with citations"""
     try:
         client, key_idx = get_groq_client()
-        st.info(f"🤖 Using API Key #{key_idx + 1}")
+        st.info(f"🤖 Using Groq API Key #{key_idx + 1}")
         
         # Fetch medical context from both sources
-        medical_context, citations = fetch_medical_info(transcript[:200])
+        with st.spinner("🔍 Searching medical databases for scientific references..."):
+            medical_context, citations = fetch_medical_info(transcript[:300])
         
-        # Save citations to session state
+        # Save citations to session state immediately
         st.session_state.citations = citations
+        debug_log(f"💾 Saved {len(citations)} citations to session state")
+        
+        if citations:
+            st.success(f"✅ Found {len(citations)} scientific references!")
+        else:
+            st.warning("⚠️ No scientific references found. Analysis will be based on general medical knowledge.")
         
         prompt = f"""You are a Gen-Z medical fact-checker with a sense of humor. Analyze this Instagram Reel content:
 
@@ -561,7 +701,7 @@ def analyze_with_llm(caption: str, transcript: str) -> Tuple[str, List[Dict[str,
 
 **Transcript:** {transcript}
 
-**Medical References:**
+**Scientific References Found:**
 {medical_context}
 
 Your task:
@@ -578,24 +718,25 @@ Keep it:
 - Gen-Z friendly (use emojis!)
 - Backed by science
 
-IMPORTANT: Do NOT use ** for bold text. Instead, write naturally without markdown formatting. The system will handle formatting automatically.
+IMPORTANT: Do NOT use ** for bold text. The system will handle formatting.
 
 Be brutally honest but helpful. If something's wrong, say it. If it's right, give credit."""
 
-        debug_log("Sending request to Groq LLM", {"prompt_length": len(prompt)})
+        debug_log("📤 Sending request to Groq LLM", {"prompt_length": len(prompt)})
         
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[
-                {"role": "system", "content": "You are a medical fact-checker who speaks like a Gen-Z doctor. Be accurate, funny, and use emojis. Write without markdown formatting - use natural language."},
-                {"role": "user", "content": prompt}
-            ],  # type: ignore
-            temperature=0.7,
-            max_tokens=2048
-        )
+        with st.spinner("🧠 AI is analyzing the medical claims..."):
+            response = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {"role": "system", "content": "You are a medical fact-checker who speaks like a Gen-Z doctor. Be accurate, funny, and use emojis. Write without markdown formatting."},
+                    {"role": "user", "content": prompt}
+                ],  # type: ignore
+                temperature=0.7,
+                max_tokens=2048
+            )
         
         result = response.choices[0].message.content or "Analysis not available"
-        debug_log("LLM analysis completed", {"length": len(result)})
+        debug_log("✅ LLM analysis completed", {"length": len(result), "preview": result[:100]})
         
         # Format the result with proper HTML
         formatted_result = format_analysis_with_proper_markdown(result)
@@ -603,45 +744,88 @@ Be brutally honest but helpful. If something's wrong, say it. If it's right, giv
         return formatted_result, citations
         
     except Exception as e:
-        debug_log("LLM analysis failed", {"error": str(e)})
-        st.error(f"LLM Analysis failed: {str(e)}")
+        debug_log("❌ LLM analysis failed", {"error": str(e), "type": type(e).__name__})
+        st.error(f"❌ LLM Analysis failed: {str(e)}")
         return "Analysis failed. Please try again.", []
 
 def display_citations(citations: List[Dict[str, str]]):
-    """Display citations in a nice format"""
+    """Display citations in a prominent, beautiful format"""
     if not citations:
+        st.markdown("""
+        <div class="no-citations">
+            ⚠️ <strong>No scientific citations found.</strong><br>
+            The analysis is based on general medical knowledge. For medical claims, always consult peer-reviewed sources.
+        </div>
+        """, unsafe_allow_html=True)
         return
     
-    citations_html = '<div class="citations-section"><h3>📚 Scientific References & Citations</h3><p><em>Click to verify the sources:</em></p><ul>'
+    citations_html = f"""
+    <div class="citations-section">
+        <div class="citations-title">
+            📚 Scientific References ({len(citations)} sources)
+        </div>
+        <div class="info-box" style="margin-bottom: 1rem;">
+            <strong>💡 Transparency Note:</strong> Click the links below to verify the scientific sources used in this analysis. 
+            We believe in evidence-based health information!
+        </div>
+    """
     
     for i, citation in enumerate(citations, 1):
         title = citation.get('title', 'Untitled')
         url = citation.get('url', '#')
         source = citation.get('source', 'Unknown')
         year = citation.get('year', '')
+        pmid = citation.get('id', '')
         
-        year_text = f" ({year})" if year else ""
-        citations_html += f'<li><a href="{url}" target="_blank" class="citation-link">[{i}] {title}</a> - <em>{source}{year_text}</em></li>'
+        year_text = f" • Year: {year}" if year and year != 'N/A' else ""
+        pmid_text = f" • PMID: {pmid}" if pmid else ""
+        
+        badge_color = "#667eea" if source == "PubMed" else "#28a745"
+        
+        citations_html += f"""
+        <div class="citation-item">
+            <span class="citation-badge" style="background: {badge_color};">{source}</span>
+            <a href="{url}" target="_blank" class="citation-link">
+                [{i}] {title}
+            </a>
+            <div class="citation-meta">
+                {source}{year_text}{pmid_text}
+            </div>
+        </div>
+        """
     
-    citations_html += '</ul></div>'
+    citations_html += '</div>'
     
     st.markdown(citations_html, unsafe_allow_html=True)
+    
+    # Also show in debug mode
+    debug_log(f"📚 Displaying {len(citations)} citations", {
+        "citations": [{"title": c.get('title', '')[:50], "source": c.get('source', '')} for c in citations]
+    })
 
 def chat_with_context(user_question: str) -> str:
     """Chat with context of the analyzed reel"""
     try:
         client, _ = get_groq_client()
         
+        # Include citations in context
+        citations_text = ""
+        if st.session_state.citations:
+            citations_text = "\n\nAvailable Scientific Sources:\n"
+            for i, cite in enumerate(st.session_state.citations, 1):
+                citations_text += f"[{i}] {cite.get('title', '')} - {cite.get('source', '')} - {cite.get('url', '')}\n"
+        
         context_info = f"""
         Reel Caption: {st.session_state.context.get('caption', 'N/A')}
         Transcript: {st.session_state.context.get('transcript', 'N/A')}
         Analysis: {st.session_state.context.get('analysis', 'N/A')}
+        {citations_text}
         """
         
-        debug_log("Chat request", {"question": user_question})
+        debug_log("💬 Chat request", {"question": user_question})
         
         messages = [
-            {"role": "system", "content": f"You are a helpful medical assistant. You have context about an Instagram Reel:\n{context_info}\n\nAnswer questions based on this context. Be friendly, accurate, and use emojis."}
+            {"role": "system", "content": f"You are a helpful medical assistant. You have context about an Instagram Reel:\n{context_info}\n\nAnswer questions based on this context. Be friendly, accurate, and use emojis. When answering about sources or citations, ALWAYS provide the specific URLs from the citations above."}
         ]
         
         # Add chat history
@@ -658,12 +842,12 @@ def chat_with_context(user_question: str) -> str:
         )
         
         result = response.choices[0].message.content or ""
-        debug_log("Chat response received", {"length": len(result)})
+        debug_log("✅ Chat response received", {"length": len(result)})
         
         return result
         
     except Exception as e:
-        debug_log("Chat error", {"error": str(e)})
+        debug_log("❌ Chat error", {"error": str(e)})
         return f"Chat error: {str(e)}"
 
 def extract_audio_url(data: Dict[str, Any]) -> str:
@@ -716,12 +900,16 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Debug toggle - better mobile layout
-col_debug1, col_debug2 = st.columns([3, 1])
-with col_debug2:
+# Top button row - Debug and Reset
+col_top1, col_top2, col_top3 = st.columns([2, 1, 1])
+with col_top2:
     if st.button("🐛 " + ("ON" if st.session_state.debug_mode else "Debug"), use_container_width=True):
         st.session_state.debug_mode = not st.session_state.debug_mode
         st.rerun()
+
+with col_top3:
+    if st.button("🔄 New Analysis", use_container_width=True, key="reset_btn", help="Start fresh with a new reel"):
+        reset_app()
 
 if st.session_state.debug_mode:
     st.warning("🐛 **Debug Mode Active** - Detailed logs will be shown below")
@@ -733,17 +921,23 @@ with col1:
     reel_url = st.text_input(
         "📱 Paste Instagram Reel URL",
         placeholder="https://www.instagram.com/reel/...",
-        label_visibility="collapsed"
+        label_visibility="collapsed",
+        disabled=st.session_state.analysis_done
     )
 
 with col2:
     language = st.selectbox(
         "🌐 Language",
         ["Hindi", "English"],
-        label_visibility="collapsed"
+        label_visibility="collapsed",
+        disabled=st.session_state.analysis_done
     )
 
-analyze_button = st.button("🔍 Analyze This Reel!", use_container_width=True)
+analyze_button = st.button(
+    "🔍 Analyze This Reel!", 
+    use_container_width=True,
+    disabled=st.session_state.analysis_done
+)
 
 # Analysis Section
 if analyze_button and reel_url:
@@ -828,8 +1022,10 @@ if analyze_button and reel_url:
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Display citations
+                # Display citations - PROMINENTLY
+                st.markdown("---")
                 display_citations(citations)
+                st.markdown("---")
                 
                 # Save to session state
                 st.session_state.context = {
@@ -839,13 +1035,15 @@ if analyze_button and reel_url:
                     'audio_path': audio_path,
                     'citations': citations
                 }
+                st.session_state.analysis_done = True
                 
                 # Download buttons - responsive grid
+                st.markdown("### 📥 Download Results")
                 col1, col2, col3 = st.columns(3)
                 
                 with col1:
                     st.download_button(
-                        "📥 Caption",
+                        "📄 Caption",
                         caption,
                         file_name="caption.txt",
                         mime="text/plain",
@@ -854,7 +1052,7 @@ if analyze_button and reel_url:
                 
                 with col2:
                     st.download_button(
-                        "📥 Transcript",
+                        "📜 Transcript",
                         transcript,
                         file_name="transcript.txt",
                         mime="text/plain",
@@ -864,10 +1062,24 @@ if analyze_button and reel_url:
                 with col3:
                     # Prepare analysis text without HTML for download
                     analysis_text = re.sub(r'<[^>]+>', '', analysis)
+                    
+                    # Add citations to download
+                    if citations:
+                        analysis_text += "\n\n" + "="*50 + "\n"
+                        analysis_text += "SCIENTIFIC REFERENCES & CITATIONS\n"
+                        analysis_text += "="*50 + "\n\n"
+                        for i, cite in enumerate(citations, 1):
+                            analysis_text += f"[{i}] {cite.get('title', '')}\n"
+                            analysis_text += f"    Source: {cite.get('source', '')}\n"
+                            analysis_text += f"    URL: {cite.get('url', '')}\n"
+                            if cite.get('year'):
+                                analysis_text += f"    Year: {cite.get('year')}\n"
+                            analysis_text += "\n"
+                    
                     st.download_button(
-                        "📥 Analysis",
+                        "📊 Full Report",
                         analysis_text,
-                        file_name="analysis.txt",
+                        file_name="medical_analysis_report.txt",
                         mime="text/plain",
                         use_container_width=True
                     )
@@ -902,6 +1114,7 @@ if st.session_state.context:
     st.markdown("""
     <div class="result-section">
         <h2 class="result-title">💬 Ask Questions About This Reel</h2>
+        <p style="color: #666; font-style: italic;">Ask anything about the analysis, sources, or medical claims!</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -919,10 +1132,12 @@ if st.session_state.context:
     with st.form(key='chat_form', clear_on_submit=True):
         user_input = st.text_input(
             "Type your question...",
-            placeholder="e.g., Is this claim scientifically proven?",
+            placeholder="e.g., What are the sources? Is this claim scientifically proven?",
             label_visibility="collapsed"
         )
-        submit = st.form_submit_button("Send 📤", use_container_width=True)
+        col_send1, col_send2 = st.columns([3, 1])
+        with col_send2:
+            submit = st.form_submit_button("Send 📤", use_container_width=True)
         
         if submit and user_input:
             # Add user message
@@ -942,6 +1157,7 @@ st.markdown("""
 ---
 <p style='text-align: center; color: #666; font-size: clamp(0.8rem, 2vw, 0.9rem);'>
 Made with 💜 by MedReel Analyzer | Not medical advice, just facts ✨<br>
-<em style="font-size: 0.85em;">Powered by Groq, PubMed & Semantic Scholar</em>
+<em style="font-size: 0.85em;">Powered by Groq LLM • PubMed • Semantic Scholar</em><br>
+<em style="font-size: 0.75em; color: #999;">Always verify health claims with qualified healthcare professionals</em>
 </p>
 """, unsafe_allow_html=True)
