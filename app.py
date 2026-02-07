@@ -381,11 +381,11 @@ if 'citations' not in st.session_state:
 if 'analysis_done' not in st.session_state:
     st.session_state.analysis_done = False
 
-# Configuration
+# Configuration - FIXED: Load from environment variable
 RAPIDAPI_CONFIG = {
     "url": "https://social-download-all-in-one.p.rapidapi.com/v1/social/autolink",
     "headers": {
-        "x-rapidapi-key": "083f33c460msh03094104d3fd8fbp1abb5fjsnbefdd3f236d7",
+        "x-rapidapi-key": os.getenv("RAPIDAPI_KEY", ""),
         "x-rapidapi-host": "social-download-all-in-one.p.rapidapi.com",
         "Content-Type": "application/json"
     }
@@ -749,7 +749,7 @@ Be brutally honest but helpful. If something's wrong, say it. If it's right, giv
         return "Analysis failed. Please try again.", []
 
 def display_citations(citations: List[Dict[str, str]]):
-    """Display citations in a prominent, beautiful format"""
+    """Display citations in a prominent, beautiful format - FIXED VERSION"""
     if not citations:
         st.markdown("""
         <div class="no-citations">
@@ -759,7 +759,8 @@ def display_citations(citations: List[Dict[str, str]]):
         """, unsafe_allow_html=True)
         return
     
-    citations_html = f"""
+    # Build the citations HTML properly
+    st.markdown(f"""
     <div class="citations-section">
         <div class="citations-title">
             📚 Scientific References ({len(citations)} sources)
@@ -768,8 +769,9 @@ def display_citations(citations: List[Dict[str, str]]):
             <strong>💡 Transparency Note:</strong> Click the links below to verify the scientific sources used in this analysis. 
             We believe in evidence-based health information!
         </div>
-    """
+    """, unsafe_allow_html=True)
     
+    # Display each citation
     for i, citation in enumerate(citations, 1):
         title = citation.get('title', 'Untitled')
         url = citation.get('url', '#')
@@ -782,7 +784,7 @@ def display_citations(citations: List[Dict[str, str]]):
         
         badge_color = "#667eea" if source == "PubMed" else "#28a745"
         
-        citations_html += f"""
+        st.markdown(f"""
         <div class="citation-item">
             <span class="citation-badge" style="background: {badge_color};">{source}</span>
             <a href="{url}" target="_blank" class="citation-link">
@@ -792,11 +794,10 @@ def display_citations(citations: List[Dict[str, str]]):
                 {source}{year_text}{pmid_text}
             </div>
         </div>
-        """
+        """, unsafe_allow_html=True)
     
-    citations_html += '</div>'
-    
-    st.markdown(citations_html, unsafe_allow_html=True)
+    # Close the citations section
+    st.markdown('</div>', unsafe_allow_html=True)
     
     # Also show in debug mode
     debug_log(f"📚 Displaying {len(citations)} citations", {
@@ -1022,7 +1023,7 @@ if analyze_button and reel_url:
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Display citations - PROMINENTLY
+                # Display citations - PROMINENTLY - FIXED
                 st.markdown("---")
                 display_citations(citations)
                 st.markdown("---")
