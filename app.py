@@ -10,6 +10,10 @@ from groq import Groq
 import time
 from typing import List, Dict, Tuple, Any
 import re
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Page config
 st.set_page_config(
@@ -19,7 +23,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom CSS for beautiful design
+# Custom CSS for beautiful mobile-responsive design
 st.markdown("""
 <style>
     /* Hide sidebar completely */
@@ -29,30 +33,33 @@ st.markdown("""
     
     /* Main container */
     .main {
-        padding: 2rem;
+        padding: 1rem;
+        max-width: 1200px;
+        margin: 0 auto;
     }
     
-    /* Title styling */
+    /* Title styling - responsive */
     .title-container {
         text-align: center;
-        padding: 2rem 0;
+        padding: 1.5rem 1rem;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         border-radius: 20px;
-        margin-bottom: 2rem;
+        margin-bottom: 1.5rem;
         box-shadow: 0 10px 30px rgba(0,0,0,0.2);
     }
     
     .title-text {
         color: white;
-        font-size: 3.5rem;
+        font-size: clamp(1.8rem, 5vw, 3.5rem);
         font-weight: bold;
         margin: 0;
         text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        line-height: 1.2;
     }
     
     .subtitle-text {
         color: #f0f0f0;
-        font-size: 1.2rem;
+        font-size: clamp(0.9rem, 2.5vw, 1.2rem);
         margin-top: 0.5rem;
     }
     
@@ -60,26 +67,27 @@ st.markdown("""
     .debug-section {
         background: #fff3cd;
         border: 2px solid #ffc107;
-        padding: 1rem;
+        padding: 0.8rem;
         border-radius: 10px;
         margin-bottom: 1rem;
         font-family: monospace;
-        font-size: 0.9rem;
+        font-size: 0.8rem;
+        overflow-x: auto;
     }
     
-    /* Input container */
+    /* Input container - responsive */
     .input-container {
         background: var(--background-color);
-        padding: 2rem;
+        padding: 1.5rem;
         border-radius: 15px;
         border: 2px solid #667eea;
-        margin-bottom: 2rem;
+        margin-bottom: 1.5rem;
     }
     
-    /* Results container */
+    /* Results container - responsive */
     .result-section {
         background: var(--background-color);
-        padding: 2rem;
+        padding: 1.5rem;
         border-radius: 15px;
         margin-bottom: 1.5rem;
         border-left: 5px solid #667eea;
@@ -88,17 +96,22 @@ st.markdown("""
     
     .result-title {
         color: #667eea;
-        font-size: 1.8rem;
+        font-size: clamp(1.3rem, 3vw, 1.8rem);
         font-weight: bold;
         margin-bottom: 1rem;
     }
     
-    /* Chat container */
+    .result-content {
+        font-size: clamp(0.9rem, 2vw, 1rem);
+        line-height: 1.6;
+    }
+    
+    /* Chat container - mobile friendly */
     .chat-container {
         background: var(--background-color);
-        padding: 1.5rem;
+        padding: 1rem;
         border-radius: 15px;
-        max-height: 400px;
+        max-height: 500px;
         overflow-y: auto;
         margin-bottom: 1rem;
     }
@@ -106,21 +119,25 @@ st.markdown("""
     .user-message {
         background: #667eea;
         color: white;
-        padding: 1rem;
+        padding: 0.8rem 1rem;
         border-radius: 15px 15px 5px 15px;
         margin-bottom: 1rem;
-        margin-left: 20%;
+        margin-left: 10%;
         box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
+        font-size: clamp(0.85rem, 2vw, 1rem);
+        word-wrap: break-word;
     }
     
     .assistant-message {
         background: #f0f0f0;
         color: #333;
-        padding: 1rem;
+        padding: 0.8rem 1rem;
         border-radius: 15px 15px 15px 5px;
         margin-bottom: 1rem;
-        margin-right: 20%;
+        margin-right: 10%;
         box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        font-size: clamp(0.85rem, 2vw, 1rem);
+        word-wrap: break-word;
     }
     
     [data-theme="dark"] .assistant-message {
@@ -128,14 +145,34 @@ st.markdown("""
         color: #e0e0e0;
     }
     
-    /* Buttons */
+    /* Mobile: full width messages */
+    @media (max-width: 768px) {
+        .user-message {
+            margin-left: 5%;
+        }
+        .assistant-message {
+            margin-right: 5%;
+        }
+        .main {
+            padding: 0.5rem;
+        }
+        .title-container {
+            padding: 1rem 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .result-section {
+            padding: 1rem;
+        }
+    }
+    
+    /* Buttons - responsive */
     .stButton>button {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
         border: none;
         border-radius: 25px;
-        padding: 0.75rem 2rem;
-        font-size: 1.1rem;
+        padding: 0.75rem 1.5rem;
+        font-size: clamp(0.9rem, 2vw, 1.1rem);
         font-weight: bold;
         cursor: pointer;
         transition: all 0.3s;
@@ -167,19 +204,60 @@ st.markdown("""
         border-top-color: #667eea !important;
     }
     
-    /* Download buttons */
+    /* Download buttons - responsive */
     .stDownloadButton>button {
         background: #28a745;
         color: white;
         border-radius: 20px;
-        padding: 0.5rem 1.5rem;
-        margin: 0.5rem;
+        padding: 0.5rem 1rem;
+        margin: 0.3rem;
+        font-size: clamp(0.8rem, 2vw, 1rem);
     }
     
     /* Emoji styling */
     .emoji {
-        font-size: 1.5rem;
+        font-size: clamp(1.2rem, 3vw, 1.5rem);
         margin-right: 0.5rem;
+    }
+    
+    /* Citation links */
+    .citation-link {
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 600;
+        border-bottom: 2px solid #667eea;
+        padding-bottom: 2px;
+        transition: all 0.3s;
+    }
+    
+    .citation-link:hover {
+        color: #764ba2;
+        border-bottom-color: #764ba2;
+    }
+    
+    .citations-section {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 10px;
+        margin-top: 1rem;
+        border-left: 4px solid #28a745;
+    }
+    
+    [data-theme="dark"] .citations-section {
+        background: #2d2d2d;
+    }
+    
+    /* Input fields - responsive */
+    .stTextInput input, .stSelectbox select {
+        font-size: clamp(0.9rem, 2vw, 1rem);
+        padding: 0.6rem;
+    }
+    
+    /* Form containers */
+    .stForm {
+        background: var(--background-color);
+        padding: 1rem;
+        border-radius: 10px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -193,6 +271,8 @@ if 'debug_mode' not in st.session_state:
     st.session_state.debug_mode = False
 if 'api_response' not in st.session_state:
     st.session_state.api_response = None
+if 'citations' not in st.session_state:
+    st.session_state.citations = []
 
 # Configuration
 RAPIDAPI_CONFIG = {
@@ -210,6 +290,9 @@ GROQ_API_KEYS = [
     os.getenv("GROQ_API_KEY_2", ""),
     os.getenv("GROQ_API_KEY_3", "")
 ]
+
+# Semantic Scholar API Key
+SEMANTIC_SCHOLAR_API_KEY = os.getenv("Semantic_Scholar_API_Key", "")
 
 def debug_log(message: str, data: Any = None):
     """Log debug information if debug mode is enabled"""
@@ -319,12 +402,46 @@ def transcribe_audio(audio_path: str, language: str) -> str:
         st.error(f"Transcription error: {str(e)}")
         return ""
 
-def fetch_medical_info(query: str) -> str:
-    """Fetch medical information from PubMed"""
+def fetch_semantic_scholar_papers(query: str) -> List[Dict[str, Any]]:
+    """Fetch papers from Semantic Scholar API"""
+    try:
+        debug_log("Fetching papers from Semantic Scholar", {"query": query})
+        
+        headers = {}
+        if SEMANTIC_SCHOLAR_API_KEY:
+            headers["x-api-key"] = SEMANTIC_SCHOLAR_API_KEY
+        
+        # Search for papers
+        search_url = "https://api.semanticscholar.org/graph/v1/paper/search"
+        params = {
+            "query": query,
+            "limit": 5,
+            "fields": "title,abstract,url,year,authors,citationCount,publicationTypes"
+        }
+        
+        response = requests.get(search_url, params=params, headers=headers)
+        
+        if response.status_code == 200:
+            data = response.json()
+            papers = data.get('data', [])
+            debug_log(f"Found {len(papers)} papers from Semantic Scholar")
+            return papers
+        else:
+            debug_log("Semantic Scholar API error", {"status": response.status_code})
+            return []
+            
+    except Exception as e:
+        debug_log("Semantic Scholar search error", {"error": str(e)})
+        return []
+
+def fetch_medical_info(query: str) -> Tuple[str, List[Dict[str, str]]]:
+    """Fetch medical information from PubMed and Semantic Scholar"""
+    citations = []
+    
     try:
         debug_log("Fetching medical info", {"query": query})
         
-        # Using NCBI E-utilities API (free)
+        # PubMed search
         base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
         params = {
             "db": "pubmed",
@@ -334,6 +451,8 @@ def fetch_medical_info(query: str) -> str:
         }
         
         response = requests.get(base_url, params=params)
+        pubmed_results = []
+        
         if response.status_code == 200:
             data = response.json()
             pmids = data.get('esearchresult', {}).get('idlist', [])
@@ -350,27 +469,91 @@ def fetch_medical_info(query: str) -> str:
                 summary_response = requests.get(summary_url, params=summary_params)
                 if summary_response.status_code == 200:
                     summaries = summary_response.json()
-                    results = []
                     for pmid in pmids:
                         article = summaries.get('result', {}).get(pmid, {})
                         title = article.get('title', '')
                         if title:
-                            results.append(f"• {title}")
-                    debug_log("Medical references found", {"count": len(results)})
-                    return "\n".join(results[:3])
-        return "No medical references found"
+                            pubmed_url = f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/"
+                            pubmed_results.append(f"• {title}")
+                            citations.append({
+                                "title": title,
+                                "url": pubmed_url,
+                                "source": "PubMed"
+                            })
+        
+        # Semantic Scholar search
+        semantic_papers = fetch_semantic_scholar_papers(query)
+        semantic_results = []
+        
+        for paper in semantic_papers:
+            title = paper.get('title', '')
+            url = paper.get('url', '')
+            year = paper.get('year', 'N/A')
+            if title and url:
+                semantic_results.append(f"• {title} ({year})")
+                citations.append({
+                    "title": title,
+                    "url": url,
+                    "source": "Semantic Scholar",
+                    "year": year
+                })
+        
+        # Combine results
+        all_results = []
+        if pubmed_results:
+            all_results.extend(pubmed_results[:2])
+        if semantic_results:
+            all_results.extend(semantic_results[:3])
+        
+        debug_log("Medical references found", {"count": len(citations)})
+        
+        result_text = "\n".join(all_results) if all_results else "No medical references found"
+        return result_text, citations
+        
     except Exception as e:
         debug_log("Medical search error", {"error": str(e)})
-        return f"Medical search error: {str(e)}"
+        return f"Medical search error: {str(e)}", citations
 
-def analyze_with_llm(caption: str, transcript: str) -> str:
-    """Analyze content with Groq LLM"""
+def format_analysis_with_proper_markdown(text: str) -> str:
+    """Fix markdown formatting - replace ** with actual bold HTML"""
+    # Replace **text** with <strong>text</strong>
+    text = re.sub(r'\*\*([^*]+)\*\*', r'<strong>\1</strong>', text)
+    
+    # Replace * for bullet points with proper HTML
+    lines = text.split('\n')
+    formatted_lines = []
+    in_list = False
+    
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith('* '):
+            if not in_list:
+                formatted_lines.append('<ul>')
+                in_list = True
+            formatted_lines.append(f'<li>{stripped[2:]}</li>')
+        else:
+            if in_list:
+                formatted_lines.append('</ul>')
+                in_list = False
+            if stripped:
+                formatted_lines.append(f'<p>{stripped}</p>')
+    
+    if in_list:
+        formatted_lines.append('</ul>')
+    
+    return '\n'.join(formatted_lines)
+
+def analyze_with_llm(caption: str, transcript: str) -> Tuple[str, List[Dict[str, str]]]:
+    """Analyze content with Groq LLM and return formatted analysis with citations"""
     try:
         client, key_idx = get_groq_client()
         st.info(f"🤖 Using API Key #{key_idx + 1}")
         
-        # Fetch medical context
-        medical_context = fetch_medical_info(transcript[:200])
+        # Fetch medical context from both sources
+        medical_context, citations = fetch_medical_info(transcript[:200])
+        
+        # Save citations to session state
+        st.session_state.citations = citations
         
         prompt = f"""You are a Gen-Z medical fact-checker with a sense of humor. Analyze this Instagram Reel content:
 
@@ -395,6 +578,8 @@ Keep it:
 - Gen-Z friendly (use emojis!)
 - Backed by science
 
+IMPORTANT: Do NOT use ** for bold text. Instead, write naturally without markdown formatting. The system will handle formatting automatically.
+
 Be brutally honest but helpful. If something's wrong, say it. If it's right, give credit."""
 
         debug_log("Sending request to Groq LLM", {"prompt_length": len(prompt)})
@@ -402,7 +587,7 @@ Be brutally honest but helpful. If something's wrong, say it. If it's right, giv
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[
-                {"role": "system", "content": "You are a medical fact-checker who speaks like a Gen-Z doctor. Be accurate, funny, and use emojis."},
+                {"role": "system", "content": "You are a medical fact-checker who speaks like a Gen-Z doctor. Be accurate, funny, and use emojis. Write without markdown formatting - use natural language."},
                 {"role": "user", "content": prompt}
             ],  # type: ignore
             temperature=0.7,
@@ -412,12 +597,35 @@ Be brutally honest but helpful. If something's wrong, say it. If it's right, giv
         result = response.choices[0].message.content or "Analysis not available"
         debug_log("LLM analysis completed", {"length": len(result)})
         
-        return result
+        # Format the result with proper HTML
+        formatted_result = format_analysis_with_proper_markdown(result)
+        
+        return formatted_result, citations
         
     except Exception as e:
         debug_log("LLM analysis failed", {"error": str(e)})
         st.error(f"LLM Analysis failed: {str(e)}")
-        return "Analysis failed. Please try again."
+        return "Analysis failed. Please try again.", []
+
+def display_citations(citations: List[Dict[str, str]]):
+    """Display citations in a nice format"""
+    if not citations:
+        return
+    
+    citations_html = '<div class="citations-section"><h3>📚 Scientific References & Citations</h3><p><em>Click to verify the sources:</em></p><ul>'
+    
+    for i, citation in enumerate(citations, 1):
+        title = citation.get('title', 'Untitled')
+        url = citation.get('url', '#')
+        source = citation.get('source', 'Unknown')
+        year = citation.get('year', '')
+        
+        year_text = f" ({year})" if year else ""
+        citations_html += f'<li><a href="{url}" target="_blank" class="citation-link">[{i}] {title}</a> - <em>{source}{year_text}</em></li>'
+    
+    citations_html += '</ul></div>'
+    
+    st.markdown(citations_html, unsafe_allow_html=True)
 
 def chat_with_context(user_question: str) -> str:
     """Chat with context of the analyzed reel"""
@@ -508,18 +716,18 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Debug toggle
-col_debug1, col_debug2 = st.columns([4, 1])
+# Debug toggle - better mobile layout
+col_debug1, col_debug2 = st.columns([3, 1])
 with col_debug2:
-    if st.button("🐛 Debug Mode" if not st.session_state.debug_mode else "🐛 Debug ON", use_container_width=True):
+    if st.button("🐛 " + ("ON" if st.session_state.debug_mode else "Debug"), use_container_width=True):
         st.session_state.debug_mode = not st.session_state.debug_mode
         st.rerun()
 
 if st.session_state.debug_mode:
     st.warning("🐛 **Debug Mode Active** - Detailed logs will be shown below")
 
-# Input Section
-col1, col2 = st.columns([3, 1])
+# Input Section - responsive columns
+col1, col2 = st.columns([2, 1])
 
 with col1:
     reel_url = st.text_input(
@@ -530,7 +738,7 @@ with col1:
 
 with col2:
     language = st.selectbox(
-        "🌐 Reel Language",
+        "🌐 Language",
         ["Hindi", "English"],
         label_visibility="collapsed"
     )
@@ -593,7 +801,7 @@ if analyze_button and reel_url:
             st.markdown(f"""
             <div class="result-section">
                 <h2 class="result-title">📝 Caption</h2>
-                <p>{caption}</p>
+                <div class="result-content">{caption}</div>
             </div>
             """, unsafe_allow_html=True)
             
@@ -605,54 +813,63 @@ if analyze_button and reel_url:
                 st.markdown(f"""
                 <div class="result-section">
                     <h2 class="result-title">📜 Transcript ({language})</h2>
-                    <p>{transcript}</p>
+                    <div class="result-content">{transcript}</div>
                 </div>
                 """, unsafe_allow_html=True)
                 
                 # Analyze
                 with st.spinner("🧠 Analyzing with AI..."):
-                    analysis = analyze_with_llm(caption, transcript)
+                    analysis, citations = analyze_with_llm(caption, transcript)
                 
                 st.markdown(f"""
                 <div class="result-section">
                     <h2 class="result-title">🔬 Medical Analysis</h2>
-                    {analysis}
+                    <div class="result-content">{analysis}</div>
                 </div>
                 """, unsafe_allow_html=True)
+                
+                # Display citations
+                display_citations(citations)
                 
                 # Save to session state
                 st.session_state.context = {
                     'caption': caption,
                     'transcript': transcript,
                     'analysis': analysis,
-                    'audio_path': audio_path
+                    'audio_path': audio_path,
+                    'citations': citations
                 }
                 
-                # Download buttons
+                # Download buttons - responsive grid
                 col1, col2, col3 = st.columns(3)
                 
                 with col1:
                     st.download_button(
-                        "📥 Download Caption",
+                        "📥 Caption",
                         caption,
                         file_name="caption.txt",
-                        mime="text/plain"
+                        mime="text/plain",
+                        use_container_width=True
                     )
                 
                 with col2:
                     st.download_button(
-                        "📥 Download Transcript",
+                        "📥 Transcript",
                         transcript,
                         file_name="transcript.txt",
-                        mime="text/plain"
+                        mime="text/plain",
+                        use_container_width=True
                     )
                 
                 with col3:
+                    # Prepare analysis text without HTML for download
+                    analysis_text = re.sub(r'<[^>]+>', '', analysis)
                     st.download_button(
-                        "📥 Download Analysis",
-                        analysis,
+                        "📥 Analysis",
+                        analysis_text,
                         file_name="analysis.txt",
-                        mime="text/plain"
+                        mime="text/plain",
+                        use_container_width=True
                     )
                 
             else:
@@ -723,7 +940,8 @@ if st.session_state.context:
 # Footer
 st.markdown("""
 ---
-<p style='text-align: center; color: #666; font-size: 0.9rem;'>
-Made with 💜 by MedReel Analyzer | Not medical advice, just facts ✨
+<p style='text-align: center; color: #666; font-size: clamp(0.8rem, 2vw, 0.9rem);'>
+Made with 💜 by MedReel Analyzer | Not medical advice, just facts ✨<br>
+<em style="font-size: 0.85em;">Powered by Groq, PubMed & Semantic Scholar</em>
 </p>
 """, unsafe_allow_html=True)
