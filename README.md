@@ -11,7 +11,7 @@ Paste a Reel link → get transcript → AI verifies claims using medical resear
 ## 🧠 Tech Stack
 **Frontend:** Streamlit  
 **Backend:** Python  
-**AI:** Groq (Llama 3.3 70B), Whisper/SpeechRecognition  
+**AI:** Groq (Llama 3.3 70B),SpeechRecognition  
 **APIs:** RapidAPI (Instagram), PubMed (medical papers)  
 **Tools:** FFmpeg, LangChain utilities  
 **Languages:** Hindi + English transcription
