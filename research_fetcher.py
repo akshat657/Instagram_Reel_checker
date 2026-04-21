@@ -108,8 +108,88 @@ def fetch_pubmed_papers(query: str, limit: int = 4) -> List[Dict[str, Any]]:
 
 
 def fetch_pmc_papers(query: str, limit: int = 4) -> List[Dict[str, Any]]:
-    """Fetch papers from PubMed Central."""
-    pass  # Will implement later
+    """
+    Fetch papers from PubMed Central (open access full-text articles).
+
+    Args:
+        query: Search query string
+        limit: Maximum number of papers to fetch
+
+    Returns:
+        List of paper dicts with title, abstract, url, source, year, pmid
+    """
+    papers = []
+
+    try:
+        # Search PMC database
+        search_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
+        search_params = {
+            "db": "pmc",
+            "term": query,
+            "retmax": limit,
+            "retmode": "json"
+        }
+
+        search_response = requests.get(search_url, params=search_params, timeout=8)
+
+        if search_response.status_code != 200:
+            return []
+
+        search_data = search_response.json()
+        pmc_ids = search_data.get('esearchresult', {}).get('idlist', [])
+
+        if not pmc_ids:
+            return []
+
+        # Fetch details
+        fetch_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi"
+        fetch_params = {
+            "db": "pmc",
+            "id": ",".join(pmc_ids),
+            "retmode": "json"
+        }
+
+        fetch_response = requests.get(fetch_url, params=fetch_params, timeout=8)
+
+        if fetch_response.status_code != 200:
+            return []
+
+        summaries = fetch_response.json()
+
+        for pmc_id in pmc_ids:
+            try:
+                article = summaries.get('result', {}).get(pmc_id, {})
+
+                if not article:
+                    continue
+
+                title = article.get('title', 'No title')
+
+                # PMC summaries don't include abstracts, use title as abstract fallback
+                abstract = f"Open access article: {title[:200]}"
+
+                # Extract year from pubdate
+                pubdate = article.get('pubdate', 'N/A')
+                year = pubdate.split()[0] if pubdate != 'N/A' else 'N/A'
+
+                papers.append({
+                    "title": title,
+                    "abstract": abstract,
+                    "url": f"https://www.ncbi.nlm.nih.gov/pmc/articles/PMC{pmc_id}/",
+                    "source": "PMC",
+                    "year": year,
+                    "pmid": "",  # PMC uses different ID
+                    "doi": article.get('doi', '')
+                })
+
+            except Exception as e:
+                continue
+
+        return papers
+
+    except Exception as e:
+        print(f"PMC fetch error: {e}")
+        return []
 
 
 def fetch_europe_pmc_papers(query: str, limit: int = 4) -> List[Dict[str, Any]]:
