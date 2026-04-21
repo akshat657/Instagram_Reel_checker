@@ -782,8 +782,11 @@ def analyze_with_llm(caption: str, transcript: str) -> Tuple[str, List[Dict[str,
             keywords = extract_medical_keywords(transcript)
             debug_log(f"📝 Extracted keywords: {keywords}")
 
+        # Show search query being used
+        st.info(f"🔍 Searching for: '{keywords[:80]}{'...' if len(keywords) > 80 else ''}'")
+
         # Fetch research papers from multiple sources (MODIFIED)
-        with st.spinner("🔍 Searching medical databases for scientific references..."):
+        with st.spinner("📚 Searching PubMed, PMC, and Europe PMC in parallel..."):
             papers = fetch_all_papers_parallel(keywords)
 
         # Save papers to session state immediately
@@ -792,6 +795,20 @@ def analyze_with_llm(caption: str, transcript: str) -> Tuple[str, List[Dict[str,
             "citation_count": len(papers),
             "sources": [c.get('source') for c in papers]
         })
+
+        # Add detailed paper info for debug (NEW)
+        if papers:
+            debug_log("📄 Papers fetched:", {
+                "papers": [
+                    {
+                        "title": p['title'][:60] + "..." if len(p['title']) > 60 else p['title'],
+                        "source": p['source'],
+                        "year": p['year'],
+                        "abstract_length": len(p['abstract'])
+                    }
+                    for p in papers
+                ]
+            })
 
         if papers:
             sources = ", ".join(set(p.get('source', 'Unknown') for p in papers))
@@ -864,6 +881,7 @@ Be brutally honest but helpful. If something's wrong, say it. If it's right, giv
 
         if len(citations_found) == 0 and len(papers) > 0:
             debug_log("⚠️ LLM did not use inline citations despite papers being available")
+            st.info("ℹ️ Note: The AI analysis may not explicitly reference all papers with [1][2] citations. All sources used are listed below.")
 
         # Format the result with proper HTML
         formatted_result = format_analysis_with_proper_markdown(result)
