@@ -11,9 +11,9 @@ Paste a Reel link → get transcript → AI verifies claims using medical resear
 ## 🧠 Tech Stack
 **Frontend:** Streamlit  
 **Backend:** Python  
-**AI:** Groq (Llama 3.3 70B),SpeechRecognition  
-**APIs:** RapidAPI (Instagram), PubMed (medical papers)  
-**Tools:** FFmpeg, LangChain utilities  
+**AI:** Groq (Llama 3.3 70B), SpeechRecognition  
+**APIs:** RapidAPI (Instagram), PubMed + PMC + Europe PMC (research papers)  
+**Tools:** FFmpeg, ThreadPoolExecutor (parallel API calls)  
 **Languages:** Hindi + English transcription
 
 ---
@@ -21,11 +21,27 @@ Paste a Reel link → get transcript → AI verifies claims using medical resear
 ## ✨ Key Features
 - Paste Instagram Reel URL and analyze instantly
 - Automatic audio extraction + transcription
-- AI medical fact-checking with scientific references
+- **AI medical fact-checking with 8-10 scientific citations** (NEW)
+- **Inline citations [1][2] from PubMed, PMC, and Europe PMC** (NEW)
+- **Clickable research paper links** (NEW)
 - Interactive chat for follow-up questions
 - Download transcripts and analysis
 - Dark/Light responsive UI
 - Auto API-key fallback for reliability
+
+---
+
+## 📚 Research Citations
+
+MedReel Analyzer backs every analysis with real scientific research:
+
+- Fetches **8-10 papers** from trusted medical databases
+- Sources: **PubMed**, **PubMed Central (PMC)**, **Europe PMC**
+- AI cites papers inline using **[1][2]** format
+- Every citation is **clickable** with abstract preview
+- Completely **free** APIs with generous limits
+
+Example: "Studies show curcumin reduces inflammation [1][2], but absorption is poor without piperine [3]."
 
 ---
 
