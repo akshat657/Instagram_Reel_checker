@@ -411,6 +411,64 @@ def debug_log(message: str, data: Any = None):
         </div>
         """, unsafe_allow_html=True)
 
+def extract_medical_keywords(transcript: str) -> str:
+    """
+    Extract medical keywords from transcript for targeted paper search.
+
+    Uses regex patterns to find medical terms, drugs, conditions, treatments.
+    Falls back to first 200 chars if no keywords found.
+
+    Args:
+        transcript: Full transcript text
+
+    Returns:
+        Space-separated string of keywords (max 150 chars)
+    """
+    import re
+
+    if not transcript or len(transcript) < 10:
+        return "medical health"
+
+    keywords = []
+    text = transcript.lower()
+
+    # Pattern 1: Medical conditions (ends with itis, osis, emia, etc.)
+    conditions = re.findall(r'\b\w+(?:itis|osis|emia|oma|pathy|trophy)\b', text)
+    keywords.extend(conditions)
+
+    # Pattern 2: Vitamins and minerals
+    vitamins = re.findall(r'\b(?:vitamin|mineral)\s+[a-z0-9]+\b', text)
+    keywords.extend(vitamins)
+
+    # Pattern 3: Common medical terms (capitalized in original transcript)
+    # Find multi-word capitalized phrases (likely medical terms)
+    for line in transcript.split('.'):
+        caps = re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b', line)
+        keywords.extend([c.lower() for c in caps if len(c) > 4])
+
+    # Pattern 4: Treatment/therapy words
+    treatments = re.findall(r'\b(?:treatment|therapy|cure|remedy|supplement|medication|drug)\b', text)
+    keywords.extend(treatments)
+
+    # Pattern 5: Body parts/systems
+    anatomy = re.findall(r'\b(?:heart|liver|kidney|brain|lung|stomach|immune|digestive|nervous|bone|blood|skin)\b', text)
+    keywords.extend(anatomy)
+
+    # Remove duplicates, keep unique
+    keywords = list(set(keywords))
+
+    # If we found keywords, join them
+    if keywords:
+        query = " ".join(keywords[:15])  # Max 15 keywords
+        # Limit to 150 chars
+        if len(query) > 150:
+            query = query[:150]
+        return query
+
+    # Fallback: use first 200 chars of transcript
+    fallback = transcript[:200].strip()
+    return fallback
+
 def reset_app():
     """Reset the entire app state"""
     st.session_state.chat_history = []
@@ -522,14 +580,14 @@ def fetch_semantic_scholar_papers(query: str) -> List[Dict[str, Any]]:
     """Fetch papers from Semantic Scholar API"""
     try:
         debug_log("Fetching papers from Semantic Scholar", {"query": query})
-        
+
         headers = {}
         if SEMANTIC_SCHOLAR_API_KEY:
             headers["x-api-key"] = SEMANTIC_SCHOLAR_API_KEY
             debug_log("Using Semantic Scholar API key")
         else:
             debug_log("No Semantic Scholar API key found - using rate-limited access")
-        
+
         # Search for papers
         search_url = "https://api.semanticscholar.org/graph/v1/paper/search"
         params = {
@@ -537,42 +595,52 @@ def fetch_semantic_scholar_papers(query: str) -> List[Dict[str, Any]]:
             "limit": 5,
             "fields": "title,abstract,url,year,authors,citationCount,publicationTypes"
         }
-        
+
         response = requests.get(search_url, params=params, headers=headers, timeout=10)
-        
+
         if response.status_code == 200:
             data = response.json()
             papers = data.get('data', [])
             debug_log(f"✅ Found {len(papers)} papers from Semantic Scholar", {"papers": [p.get('title', '') for p in papers]})
             return papers
+        elif response.status_code == 429:
+            # Rate limited - show user-friendly warning
+            st.warning("⚠️ Semantic Scholar API rate limited. Using PubMed only for now.")
+            debug_log(f"❌ Semantic Scholar rate limited (429)", {"response": response.text[:200]})
+            return []
         else:
+            st.warning(f"⚠️ Semantic Scholar API error (Status {response.status_code}). Using PubMed only.")
             debug_log(f"❌ Semantic Scholar API error - Status: {response.status_code}", {"response": response.text[:200]})
             return []
-            
+
     except Exception as e:
+        st.warning(f"⚠️ Semantic Scholar search failed: {str(e)}")
         debug_log("❌ Semantic Scholar search error", {"error": str(e), "type": type(e).__name__})
         return []
 
 def fetch_medical_info(query: str) -> Tuple[str, List[Dict[str, str]]]:
     """Fetch medical information from PubMed and Semantic Scholar"""
     citations = []
-    
+
     try:
-        debug_log("🔍 Starting medical info search", {"query": query})
-        
+        debug_log("🔍 Starting medical info search", {"query": query, "query_length": len(query)})
+
+        # Show what we're searching for
+        st.info(f"🔍 Searching medical databases for: '{query[:100]}{'...' if len(query) > 100 else ''}'")
+
         # PubMed search
         st.info("🔍 Searching PubMed database...")
         base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
         params = {
             "db": "pubmed",
             "term": query,
-            "retmax": 3,
+            "retmax": 5,  # Increased from 3 to 5
             "retmode": "json"
         }
-        
+
         response = requests.get(base_url, params=params, timeout=10)
         pubmed_results = []
-        
+
         if response.status_code == 200:
             data = response.json()
             pmids = data.get('esearchresult', {}).get('idlist', [])
@@ -683,17 +751,24 @@ def analyze_with_llm(caption: str, transcript: str) -> Tuple[str, List[Dict[str,
         st.info(f"🤖 Using Groq API Key #{key_idx + 1}")
         
         # Fetch medical context from both sources
+        # IMPROVED: Use more of the transcript for better search results
+        # Extract key medical terms from transcript (first 500 chars or full if shorter)
+        search_query = transcript[:500] if len(transcript) > 500 else transcript
+
         with st.spinner("🔍 Searching medical databases for scientific references..."):
-            medical_context, citations = fetch_medical_info(transcript[:300])
-        
+            medical_context, citations = fetch_medical_info(search_query)
+
         # Save citations to session state immediately
         st.session_state.citations = citations
-        debug_log(f"💾 Saved {len(citations)} citations to session state")
+        debug_log(f"💾 Saved {len(citations)} citations to session state", {
+            "citation_count": len(citations),
+            "sources": [c.get('source') for c in citations]
+        })
         
         if citations:
-            st.success(f"✅ Found {len(citations)} scientific references!")
+            st.success(f"✅ Found {len(citations)} scientific references from {', '.join(set(c.get('source', 'Unknown') for c in citations))}!")
         else:
-            st.warning("⚠️ No scientific references found. Analysis will be based on general medical knowledge.")
+            st.warning("⚠️ No scientific references found. This might mean: (1) The content isn't medical, (2) APIs are rate-limited, or (3) Search terms weren't specific enough. Analysis will use general medical knowledge.")
         
         prompt = f"""You are a Gen-Z medical fact-checker with a sense of humor. Analyze this Instagram Reel content:
 
