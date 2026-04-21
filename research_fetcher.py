@@ -265,10 +265,93 @@ def fetch_europe_pmc_papers(query: str, limit: int = 4) -> List[Dict[str, Any]]:
 
 
 def deduplicate_papers(papers: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Remove duplicate papers by PMID, DOI, or title similarity."""
-    pass  # Will implement later
+    """
+    Remove duplicate papers by PMID, DOI, or title similarity.
+
+    Args:
+        papers: List of paper dicts
+
+    Returns:
+        Deduplicated list of papers (keeps first occurrence)
+    """
+    seen_pmids = set()
+    seen_dois = set()
+    seen_titles = []
+    unique_papers = []
+
+    for paper in papers:
+        # Check PMID
+        pmid = paper.get('pmid', '')
+        if pmid and pmid in seen_pmids:
+            continue
+
+        # Check DOI
+        doi = paper.get('doi', '')
+        if doi and doi in seen_dois:
+            continue
+
+        # Check title similarity
+        title = paper.get('title', '').lower()
+        is_duplicate = False
+
+        for seen_title in seen_titles:
+            similarity = SequenceMatcher(None, title, seen_title).ratio()
+            if similarity > 0.9:
+                is_duplicate = True
+                break
+
+        if is_duplicate:
+            continue
+
+        # Add to unique set
+        if pmid:
+            seen_pmids.add(pmid)
+        if doi:
+            seen_dois.add(doi)
+        seen_titles.append(title)
+        unique_papers.append(paper)
+
+    return unique_papers
 
 
 def fetch_all_papers_parallel(query: str) -> List[Dict[str, Any]]:
-    """Fetch papers from all sources in parallel."""
-    pass  # Will implement later
+    """
+    Fetch papers from all sources (PubMed, PMC, Europe PMC) in parallel.
+
+    Args:
+        query: Search query string
+
+    Returns:
+        Deduplicated list of 8-10 papers with abstracts
+    """
+    papers = []
+
+    # Define API functions to call
+    apis = [
+        (fetch_pubmed_papers, query, 4),
+        (fetch_pmc_papers, query, 4),
+        (fetch_europe_pmc_papers, query, 4),
+    ]
+
+    # Execute in parallel with timeout
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        future_to_source = {
+            executor.submit(func, q, limit): func.__name__
+            for func, q, limit in apis
+        }
+
+        for future in as_completed(future_to_source, timeout=10):
+            source = future_to_source[future]
+            try:
+                result = future.result(timeout=8)
+                papers.extend(result)
+                print(f"[OK] {source}: {len(result)} papers")
+            except Exception as e:
+                print(f"[FAIL] {source} failed: {e}")
+                continue
+
+    # Deduplicate
+    unique_papers = deduplicate_papers(papers)
+
+    # Limit to 10 papers
+    return unique_papers[:10]

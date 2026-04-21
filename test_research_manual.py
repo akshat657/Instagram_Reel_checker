@@ -1,13 +1,22 @@
-from research_fetcher import fetch_pubmed_papers, fetch_pmc_papers, fetch_europe_pmc_papers
+from research_fetcher import fetch_all_papers_parallel
 
-# Test Europe PMC
-print("\n" + "="*60)
-print("Testing Europe PMC")
 print("="*60)
-eu_papers = fetch_europe_pmc_papers("heart disease prevention", limit=3)
-print(f"Found {len(eu_papers)} papers")
-for i, paper in enumerate(eu_papers, 1):
-    print(f"\n[{i}] {paper['title']}")
-    print(f"    Year: {paper['year']}, Source: {paper['source']}")
-    print(f"    Abstract: {paper['abstract'][:100]}...")
+print("Testing Parallel Fetch with Deduplication")
+print("="*60)
+
+query = "turmeric inflammation arthritis"
+print(f"\nQuery: {query}")
+print("Fetching from PubMed, PMC, and Europe PMC in parallel...\n")
+
+papers = fetch_all_papers_parallel(query)
+
+print(f"\n{'='*60}")
+print(f"Total unique papers: {len(papers)}")
+print(f"{'='*60}\n")
+
+for i, paper in enumerate(papers, 1):
+    print(f"[{i}] {paper['title']}")
+    print(f"    Source: {paper['source']} | Year: {paper['year']}")
+    print(f"    Abstract: {paper['abstract'][:150]}...")
     print(f"    URL: {paper['url']}")
+    print()
