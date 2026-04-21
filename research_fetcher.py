@@ -193,8 +193,75 @@ def fetch_pmc_papers(query: str, limit: int = 4) -> List[Dict[str, Any]]:
 
 
 def fetch_europe_pmc_papers(query: str, limit: int = 4) -> List[Dict[str, Any]]:
-    """Fetch papers from Europe PMC."""
-    pass  # Will implement later
+    """
+    Fetch papers from Europe PMC (European medical research database).
+
+    Args:
+        query: Search query string
+        limit: Maximum number of papers to fetch
+
+    Returns:
+        List of paper dicts with title, abstract, url, source, year, pmid
+    """
+    papers = []
+
+    try:
+        search_url = "https://www.ebi.ac.uk/europepmc/webservices/rest/search"
+        params = {
+            "query": query,
+            "format": "json",
+            "pageSize": limit,
+            "resultType": "core"
+        }
+
+        response = requests.get(search_url, params=params, timeout=8)
+
+        if response.status_code != 200:
+            return []
+
+        data = response.json()
+        results = data.get('resultList', {}).get('result', [])
+
+        for article in results:
+            try:
+                title = article.get('title', 'No title')
+                abstract = article.get('abstractText', 'Abstract not available')
+
+                # Truncate abstract to 250 words
+                abstract_words = abstract.split()
+                if len(abstract_words) > 250:
+                    abstract = " ".join(abstract_words[:250]) + "..."
+
+                year = article.get('pubYear', 'N/A')
+                doi = article.get('doi', '')
+                pmid = article.get('pmid', '')
+
+                # Build URL - prefer DOI, fallback to PMID
+                if doi:
+                    url = f"https://doi.org/{doi}"
+                elif pmid:
+                    url = f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/"
+                else:
+                    url = f"https://europepmc.org/article/MED/{article.get('id', '')}"
+
+                papers.append({
+                    "title": title,
+                    "abstract": abstract,
+                    "url": url,
+                    "source": "Europe PMC",
+                    "year": str(year),
+                    "pmid": pmid,
+                    "doi": doi
+                })
+
+            except Exception as e:
+                continue
+
+        return papers
+
+    except Exception as e:
+        print(f"Europe PMC fetch error: {e}")
+        return []
 
 
 def deduplicate_papers(papers: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
