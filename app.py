@@ -11,6 +11,7 @@ import time
 from typing import List, Dict, Tuple, Any
 import re
 from dotenv import load_dotenv
+from research_fetcher import fetch_all_papers_parallel
 
 # Load environment variables
 load_dotenv()
@@ -749,42 +750,61 @@ def analyze_with_llm(caption: str, transcript: str) -> Tuple[str, List[Dict[str,
     try:
         client, key_idx = get_groq_client()
         st.info(f"🤖 Using Groq API Key #{key_idx + 1}")
-        
-        # Fetch medical context from both sources
-        # IMPROVED: Use more of the transcript for better search results
-        # Extract key medical terms from transcript (first 500 chars or full if shorter)
-        search_query = transcript[:500] if len(transcript) > 500 else transcript
 
+        # Extract keywords from full transcript (NEW)
+        with st.spinner("🔍 Extracting medical keywords..."):
+            keywords = extract_medical_keywords(transcript)
+            debug_log(f"📝 Extracted keywords: {keywords}")
+
+        # Fetch research papers from multiple sources (MODIFIED)
         with st.spinner("🔍 Searching medical databases for scientific references..."):
-            medical_context, citations = fetch_medical_info(search_query)
+            papers = fetch_all_papers_parallel(keywords)
 
-        # Save citations to session state immediately
-        st.session_state.citations = citations
-        debug_log(f"💾 Saved {len(citations)} citations to session state", {
-            "citation_count": len(citations),
-            "sources": [c.get('source') for c in citations]
+        # Save papers to session state immediately
+        st.session_state.citations = papers
+        debug_log(f"💾 Saved {len(papers)} citations to session state", {
+            "citation_count": len(papers),
+            "sources": [c.get('source') for c in papers]
         })
-        
-        if citations:
-            st.success(f"✅ Found {len(citations)} scientific references from {', '.join(set(c.get('source', 'Unknown') for c in citations))}!")
+
+        if papers:
+            sources = ", ".join(set(p.get('source', 'Unknown') for p in papers))
+            st.success(f"✅ Found {len(papers)} scientific references from {sources}!")
         else:
             st.warning("⚠️ No scientific references found. This might mean: (1) The content isn't medical, (2) APIs are rate-limited, or (3) Search terms weren't specific enough. Analysis will use general medical knowledge.")
-        
-        prompt = f"""You are a Gen-Z medical fact-checker with a sense of humor. Analyze this Instagram Reel content:
+
+        # Build numbered paper list for LLM (NEW)
+        papers_text = ""
+        if papers:
+            papers_text = "\n**Research Papers Available (CITE THESE using [1], [2], etc.):**\n\n"
+            for i, paper in enumerate(papers, 1):
+                papers_text += f"""[{i}] Title: "{paper['title']}" ({paper['year']})
+    Source: {paper['source']}
+    Abstract: {paper['abstract']}
+
+"""
+
+        # Build prompt with inline citation instruction (MODIFIED)
+        prompt = f"""You are a Gen-Z medical fact-checker with a sense of humor. Analyze this Instagram Reel content and CITE research papers inline using [1], [2], [3] format.
 
 **Caption:** {caption}
 
 **Transcript:** {transcript}
 
-**Scientific References Found:**
-{medical_context}
+{papers_text}
 
 Your task:
 1. **What's the claim?** - Summarize what they're saying (max 2 lines)
-2. **Is it legit?** ✅❌ - Rate accuracy (Accurate/Partially True/Misleading/False)
-3. **The tea ☕** - Explain what's actually true with scientific backing
-4. **Red flags 🚩** - Point out anything sus or incorrect
+2. **Is it legit?** ✅❌ - Rate accuracy (Accurate/Partially True/Misleading/False) with CITATIONS
+3. **The tea ☕** - Explain what's actually true with scientific backing using citations [1][2]
+4. **Red flags 🚩** - Point out anything sus or incorrect with citations
 5. **Bottom line** - Your verdict in one spicy sentence
+
+IMPORTANT:
+- Use inline citations like: "Studies show X [1][2]. However, Y [3]."
+- Cite papers that support or refute specific claims
+- Only cite papers you were given above
+- If no papers available, mention "based on general medical knowledge"
 
 Keep it:
 - In bullet points
@@ -793,31 +813,37 @@ Keep it:
 - Gen-Z friendly (use emojis!)
 - Backed by science
 
-IMPORTANT: Do NOT use ** for bold text. The system will handle formatting.
-
 Be brutally honest but helpful. If something's wrong, say it. If it's right, give credit."""
 
         debug_log("📤 Sending request to Groq LLM", {"prompt_length": len(prompt)})
-        
+
         with st.spinner("🧠 AI is analyzing the medical claims..."):
             response = client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
                 messages=[
-                    {"role": "system", "content": "You are a medical fact-checker who speaks like a Gen-Z doctor. Be accurate, funny, and use emojis. Write without markdown formatting."},
+                    {"role": "system", "content": "You are a medical fact-checker who speaks like a Gen-Z doctor. Be accurate, funny, and cite research papers inline using [1][2] format. Write without markdown formatting - the system handles that."},
                     {"role": "user", "content": prompt}
-                ],  # type: ignore
+                ],
                 temperature=0.7,
                 max_tokens=2048
             )
-        
+
         result = response.choices[0].message.content or "Analysis not available"
         debug_log("✅ LLM analysis completed", {"length": len(result), "preview": result[:100]})
-        
+
+        # Check if LLM used citations
+        import re
+        citation_pattern = r'\[\d+\]'
+        citations_found = re.findall(citation_pattern, result)
+
+        if len(citations_found) == 0 and len(papers) > 0:
+            debug_log("⚠️ LLM did not use inline citations despite papers being available")
+
         # Format the result with proper HTML
         formatted_result = format_analysis_with_proper_markdown(result)
-        
-        return formatted_result, citations
-        
+
+        return formatted_result, papers
+
     except Exception as e:
         debug_log("❌ LLM analysis failed", {"error": str(e), "type": type(e).__name__})
         st.error(f"❌ LLM Analysis failed: {str(e)}")
