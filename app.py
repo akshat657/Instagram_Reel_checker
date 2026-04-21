@@ -716,16 +716,39 @@ def fetch_medical_info(query: str) -> Tuple[str, List[Dict[str, str]]]:
         st.error(f"Medical search error: {str(e)}")
         return f"Medical search error: {str(e)}", citations
 
+def make_citations_clickable(text: str) -> str:
+    """
+    Replace [1], [2], etc. with clickable anchor links.
+
+    Args:
+        text: HTML formatted text with [1][2] citations
+
+    Returns:
+        Text with clickable citation links
+    """
+    import re
+
+    # Replace [1] with <a href="#citation-1">[1]</a>
+    def replace_citation(match):
+        num = match.group(1)
+        return f'<a href="#citation-{num}" style="color: #667eea; text-decoration: none; font-weight: 600;">[{num}]</a>'
+
+    # Pattern: [digit]
+    pattern = r'\[(\d+)\]'
+    result = re.sub(pattern, replace_citation, text)
+
+    return result
+
 def format_analysis_with_proper_markdown(text: str) -> str:
     """Fix markdown formatting - replace ** with actual bold HTML"""
     # Replace **text** with <strong>text</strong>
     text = re.sub(r'\*\*([^*]+)\*\*', r'<strong>\1</strong>', text)
-    
+
     # Replace * for bullet points with proper HTML
     lines = text.split('\n')
     formatted_lines = []
     in_list = False
-    
+
     for line in lines:
         stripped = line.strip()
         if stripped.startswith('* '):
@@ -739,11 +762,14 @@ def format_analysis_with_proper_markdown(text: str) -> str:
                 in_list = False
             if stripped:
                 formatted_lines.append(f'<p style="margin-bottom: 0.8rem;">{stripped}</p>')
-    
+
     if in_list:
         formatted_lines.append('</ul>')
-    
-    return '\n'.join(formatted_lines)
+
+    result = '\n'.join(formatted_lines)
+    # Make citations clickable
+    result = make_citations_clickable(result)
+    return result
 
 def analyze_with_llm(caption: str, transcript: str) -> Tuple[str, List[Dict[str, str]]]:
     """Analyze content with Groq LLM and return formatted analysis with citations"""
@@ -850,7 +876,7 @@ Be brutally honest but helpful. If something's wrong, say it. If it's right, giv
         return "Analysis failed. Please try again.", []
 
 def display_citations(citations: List[Dict[str, str]]):
-    """Display citations in a prominent, beautiful format - FIXED VERSION"""
+    """Display citations in a prominent, beautiful format with numbering"""
     if not citations:
         st.markdown("""
         <div class="no-citations">
@@ -859,7 +885,7 @@ def display_citations(citations: List[Dict[str, str]]):
         </div>
         """, unsafe_allow_html=True)
         return
-    
+
     # Build the citations HTML properly
     st.markdown(f"""
     <div class="citations-section">
@@ -867,39 +893,55 @@ def display_citations(citations: List[Dict[str, str]]):
             📚 Scientific References ({len(citations)} sources)
         </div>
         <div class="info-box" style="margin-bottom: 1rem;">
-            <strong>💡 Transparency Note:</strong> Click the links below to verify the scientific sources used in this analysis. 
+            <strong>💡 Transparency Note:</strong> Click the citation numbers [1][2] in the analysis above
+            to jump to the source, or click the links below to read the full papers.
             We believe in evidence-based health information!
         </div>
     """, unsafe_allow_html=True)
-    
-    # Display each citation
+
+    # Display each citation with anchor ID
     for i, citation in enumerate(citations, 1):
         title = citation.get('title', 'Untitled')
         url = citation.get('url', '#')
         source = citation.get('source', 'Unknown')
         year = citation.get('year', '')
-        pmid = citation.get('id', '')
-        
+        abstract = citation.get('abstract', 'Abstract not available')
+        pmid = citation.get('pmid', '')
+        doi = citation.get('doi', '')
+
+        # Truncate abstract for display (first 150 chars)
+        abstract_preview = abstract[:150] + "..." if len(abstract) > 150 else abstract
+
         year_text = f" • Year: {year}" if year and year != 'N/A' else ""
         pmid_text = f" • PMID: {pmid}" if pmid else ""
-        
-        badge_color = "#667eea" if source == "PubMed" else "#28a745"
-        
+        doi_text = f" • DOI: {doi}" if doi else ""
+
+        badge_color = "#667eea" if source == "PubMed" else "#28a745" if source == "PMC" else "#f39c12"
+
+        # Add anchor ID for clickable citations
         st.markdown(f"""
-        <div class="citation-item">
+        <div class="citation-item" id="citation-{i}">
             <span class="citation-badge" style="background: {badge_color};">{source}</span>
             <a href="{url}" target="_blank" class="citation-link">
                 [{i}] {title}
             </a>
             <div class="citation-meta">
-                {source}{year_text}{pmid_text}
+                {source}{year_text}{pmid_text}{doi_text}
+            </div>
+            <div style="margin-top: 0.5rem; color: #666; font-size: 0.9rem; font-style: italic;">
+                {abstract_preview}
+            </div>
+            <div style="margin-top: 0.5rem;">
+                <a href="{url}" target="_blank" style="color: #667eea; font-size: 0.9rem; text-decoration: none;">
+                    🔗 Read Full Paper →
+                </a>
             </div>
         </div>
         """, unsafe_allow_html=True)
-    
+
     # Close the citations section
     st.markdown('</div>', unsafe_allow_html=True)
-    
+
     # Also show in debug mode
     debug_log(f"📚 Displaying {len(citations)} citations", {
         "citations": [{"title": c.get('title', '')[:50], "source": c.get('source', '')} for c in citations]
