@@ -105,6 +105,7 @@ st.markdown("""
     .result-content {
         font-size: clamp(0.9rem, 2vw, 1rem);
         line-height: 1.6;
+        color: var(--text-color);
     }
     
     /* Chat container - mobile friendly */
@@ -364,6 +365,24 @@ st.markdown("""
     [data-theme="dark"] .info-box {
         background: #0d2d4d;
         border-left-color: #64b5f6;
+    }
+
+    /* Enhanced transcript styling */
+    .enhanced-transcript {
+        border-left: 5px solid #28a745 !important;
+    }
+
+    [data-theme="light"] .enhanced-transcript {
+        background: linear-gradient(135deg, #f5fff5 0%, #e8f5e9 100%) !important;
+    }
+
+    [data-theme="dark"] .enhanced-transcript {
+        background: linear-gradient(135deg, #1a2e1a 0%, #0d1f0d 100%) !important;
+        border-left: 5px solid #4ade80 !important;
+    }
+
+    [data-theme="dark"] .enhanced-transcript .result-title {
+        color: #4ade80 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -716,6 +735,115 @@ def fetch_medical_info(query: str) -> Tuple[str, List[Dict[str, str]]]:
         st.error(f"Medical search error: {str(e)}")
         return f"Medical search error: {str(e)}", citations
 
+def correct_transcript_grammar(transcript: str, language: str) -> str:
+    """
+    Use Groq to correct grammatical errors in transcript while keeping original language.
+
+    Args:
+        transcript: Original transcript with potential errors
+        language: Language of transcript ("Hindi", "English")
+
+    Returns:
+        Grammatically corrected transcript in same language
+    """
+    try:
+        debug_log(f"📝 Correcting {language} transcript grammar...")
+        client, _ = get_groq_client()
+
+        prompt = f"""You are a transcript correction expert.
+
+Your task: Fix grammatical errors and transcription mistakes in this {language} transcript.
+
+Rules:
+- Keep the transcript in {language} language
+- Fix spelling mistakes and grammar errors
+- Improve readability but preserve original meaning
+- Keep all medical terms intact
+
+Original transcript:
+{transcript}
+
+Provide ONLY the corrected {language} transcript. No explanations."""
+
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.2,
+            max_tokens=1024
+        )
+
+        corrected = response.choices[0].message.content or transcript
+        debug_log(f"✅ Grammar correction complete", {
+            "original_length": len(transcript),
+            "corrected_length": len(corrected),
+            "preview": corrected[:150] + "..."
+        })
+        return corrected
+
+    except Exception as e:
+        debug_log(f"⚠️ Grammar correction failed: {str(e)}")
+        return transcript
+
+def extract_keywords_with_groq(transcript: str, language: str) -> str:
+    """
+    Use Groq to extract medical keywords from transcript and translate to English.
+
+    Args:
+        transcript: Transcript in any language
+        language: Language of transcript
+
+    Returns:
+        Medical keywords in English for research paper search
+    """
+    try:
+        debug_log(f"🔍 Extracting medical keywords from {language} transcript...")
+        client, _ = get_groq_client()
+
+        prompt = f"""You are a medical keyword extraction expert.
+
+Your task: Extract medical keywords from this {language} transcript and provide them in English.
+
+Extract:
+- Medical conditions and diseases
+- Symptoms
+- Treatments and medications
+- Body parts and organs
+- Chemical compounds
+- Vitamins and supplements
+- Medical procedures
+
+{language} transcript:
+{transcript}
+
+Provide ONLY the medical keywords in English, separated by spaces. Maximum 15 keywords. No explanations."""
+
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.3,
+            max_tokens=256
+        )
+
+        keywords = response.choices[0].message.content or ""
+        # Clean up the keywords
+        keywords = keywords.strip()
+
+        # Fallback if no keywords extracted
+        if not keywords or len(keywords) < 5:
+            debug_log("⚠️ No keywords extracted, using fallback")
+            return "medical health nutrition"
+
+        debug_log(f"✅ Keywords extracted: {keywords}")
+        return keywords
+
+    except Exception as e:
+        debug_log(f"⚠️ Keyword extraction failed: {str(e)}")
+        return "medical health nutrition"
+
 def make_citations_clickable(text: str) -> str:
     """
     Replace [1], [2], etc. with clickable anchor links.
@@ -771,15 +899,23 @@ def format_analysis_with_proper_markdown(text: str) -> str:
     result = make_citations_clickable(result)
     return result
 
-def analyze_with_llm(caption: str, transcript: str) -> Tuple[str, List[Dict[str, str]]]:
-    """Analyze content with Groq LLM and return formatted analysis with citations"""
+def analyze_with_llm(caption: str, transcript: str, language: str = "English") -> Tuple[str, str, List[Dict[str, str]]]:
+    """Analyze content with Groq LLM and return formatted analysis with citations
+
+    Returns:
+        Tuple of (analysis, corrected_transcript, citations)
+    """
     try:
         client, key_idx = get_groq_client()
         st.info(f"🤖 Using Groq API Key #{key_idx + 1}")
 
-        # Extract keywords from full transcript (NEW)
-        with st.spinner("🔍 Extracting medical keywords..."):
-            keywords = extract_medical_keywords(transcript)
+        # Step 1: Correct transcript grammar in native language
+        with st.spinner(f"📝 Correcting {language} transcript grammar..."):
+            corrected_transcript = correct_transcript_grammar(transcript, language)
+
+        # Step 2: Extract medical keywords and translate to English using Groq
+        with st.spinner("🔍 Extracting medical keywords with AI..."):
+            keywords = extract_keywords_with_groq(corrected_transcript, language)
             debug_log(f"📝 Extracted keywords: {keywords}")
 
         # Show search query being used
@@ -832,7 +968,7 @@ def analyze_with_llm(caption: str, transcript: str) -> Tuple[str, List[Dict[str,
 
 **Caption:** {caption}
 
-**Transcript:** {transcript}
+**Transcript:** {corrected_transcript}
 
 {papers_text}
 
@@ -886,12 +1022,12 @@ Be brutally honest but helpful. If something's wrong, say it. If it's right, giv
         # Format the result with proper HTML
         formatted_result = format_analysis_with_proper_markdown(result)
 
-        return formatted_result, papers
+        return formatted_result, corrected_transcript, papers
 
     except Exception as e:
         debug_log("❌ LLM analysis failed", {"error": str(e), "type": type(e).__name__})
         st.error(f"❌ LLM Analysis failed: {str(e)}")
-        return "Analysis failed. Please try again.", []
+        return "Analysis failed. Please try again.", transcript, []
 
 def display_citations(citations: List[Dict[str, str]]):
     """Display citations in a prominent, beautiful format with numbering"""
@@ -1166,16 +1302,28 @@ if analyze_button and reel_url:
                 transcript = transcribe_audio(audio_path, str(language))
             
             if transcript:
+                # Display original transcript
                 st.markdown(f"""
                 <div class="result-section">
-                    <h2 class="result-title">📜 Transcript ({language})</h2>
+                    <h2 class="result-title">📜 Original Transcript ({language})</h2>
                     <div class="result-content">{transcript}</div>
                 </div>
                 """, unsafe_allow_html=True)
-                
+
                 # Analyze
                 with st.spinner("🧠 Analyzing with AI..."):
-                    analysis, citations = analyze_with_llm(caption, transcript)
+                    analysis, corrected_transcript, citations = analyze_with_llm(caption, transcript, str(language))
+
+                # Display enhanced transcript
+                st.markdown(f"""
+                <div class="result-section enhanced-transcript">
+                    <h2 class="result-title">✨ Enhanced Transcript (AI-corrected)</h2>
+                    <div class="result-content">{corrected_transcript}</div>
+                    <div class="info-box" style="margin-top: 1rem;">
+                        <small>ℹ️ <strong>Note:</strong> The enhanced version has been corrected for grammar and spelling while keeping the original {language} language.</small>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
                 
                 st.markdown(f"""
                 <div class="result-section">
@@ -1193,9 +1341,11 @@ if analyze_button and reel_url:
                 st.session_state.context = {
                     'caption': caption,
                     'transcript': transcript,
+                    'corrected_transcript': corrected_transcript,
                     'analysis': analysis,
                     'audio_path': audio_path,
-                    'citations': citations
+                    'citations': citations,
+                    'language': str(language)
                 }
                 st.session_state.analysis_done = True
                 
@@ -1214,9 +1364,9 @@ if analyze_button and reel_url:
                 
                 with col2:
                     st.download_button(
-                        "📜 Transcript",
-                        transcript,
-                        file_name="transcript.txt",
+                        "📜 Enhanced Transcript",
+                        corrected_transcript,
+                        file_name="enhanced_transcript.txt",
                         mime="text/plain",
                         use_container_width=True
                     )
@@ -1265,6 +1415,103 @@ if analyze_button and reel_url:
             if st.session_state.api_response:
                 with st.expander("🔍 View Raw API Response"):
                     st.json(st.session_state.api_response)
+
+# Display stored results if they exist (persists after button clicks)
+elif st.session_state.analysis_done and st.session_state.context:
+    # Retrieve stored data
+    caption = st.session_state.context.get('caption', '')
+    transcript = st.session_state.context.get('transcript', '')
+    corrected_transcript = st.session_state.context.get('corrected_transcript', transcript)
+    analysis = st.session_state.context.get('analysis', '')
+    citations = st.session_state.context.get('citations', [])
+    stored_language = st.session_state.context.get('language', 'English')
+
+    # Display caption
+    st.markdown(f"""
+    <div class="result-section">
+        <h2 class="result-title">📝 Caption</h2>
+        <div class="result-content">{caption}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Display original transcript
+    st.markdown(f"""
+    <div class="result-section">
+        <h2 class="result-title">📜 Original Transcript ({stored_language})</h2>
+        <div class="result-content">{transcript}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Display enhanced transcript
+    st.markdown(f"""
+    <div class="result-section enhanced-transcript">
+        <h2 class="result-title">✨ Enhanced Transcript (AI-corrected)</h2>
+        <div class="result-content">{corrected_transcript}</div>
+        <div class="info-box" style="margin-top: 1rem;">
+            <small>ℹ️ <strong>Note:</strong> The enhanced version has been corrected for grammar and spelling while keeping the original {stored_language} language.</small>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Display analysis
+    st.markdown(f"""
+    <div class="result-section">
+        <h2 class="result-title">🔬 Medical Analysis</h2>
+        <div class="result-content">{analysis}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Display citations
+    st.markdown("---")
+    display_citations(citations)
+    st.markdown("---")
+
+    # Download buttons - responsive grid
+    st.markdown("### 📥 Download Results")
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.download_button(
+            "📄 Caption",
+            caption,
+            file_name="caption.txt",
+            mime="text/plain",
+            use_container_width=True
+        )
+
+    with col2:
+        st.download_button(
+            "📜 Enhanced Transcript",
+            corrected_transcript,
+            file_name="enhanced_transcript.txt",
+            mime="text/plain",
+            use_container_width=True
+        )
+
+    with col3:
+        # Prepare analysis text without HTML for download
+        analysis_text = re.sub(r'<[^>]+>', '', analysis)
+
+        # Add citations to download
+        if citations:
+            analysis_text += "\n\n" + "="*50 + "\n"
+            analysis_text += "SCIENTIFIC REFERENCES & CITATIONS\n"
+            analysis_text += "="*50 + "\n\n"
+            for i, cite in enumerate(citations, 1):
+                analysis_text += f"[{i}] {cite.get('title', '')}\n"
+                analysis_text += f"    Source: {cite.get('source', '')}\n"
+                analysis_text += f"    URL: {cite.get('url', '')}\n"
+                if cite.get('year'):
+                    analysis_text += f"    Year: {cite.get('year')}\n"
+                analysis_text += "\n"
+
+        st.download_button(
+            "📊 Full Report",
+            analysis_text,
+            file_name="medical_analysis_report.txt",
+            mime="text/plain",
+            use_container_width=True
+        )
 
 # Show raw API response in debug mode
 if st.session_state.debug_mode and st.session_state.api_response:
