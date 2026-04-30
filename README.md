@@ -1,6 +1,4 @@
-Here is a clean, short, recruiter-friendly **single README.md** you can paste directly:
 
-````markdown
 # 💊 MedReel Analyzer 🎥
 
 MedReel Analyzer is an AI web app that downloads, transcribes, and fact-checks Instagram Reels containing health advice.  
