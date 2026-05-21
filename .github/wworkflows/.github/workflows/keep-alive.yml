@@ -1,0 +1,45 @@
+name: Keep Streamlit App Awake
+
+on:
+  schedule:
+    # Runs every 6 hours to keep the app awake
+    # Cron format: minute hour day month weekday
+    # Change to '0 */12 * * *' for every 12 hours
+    - cron: '0 */1 * * *'
+  
+  # Allows you to manually run this workflow from GitHub Actions tab
+  workflow_dispatch:
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Ping Streamlit App
+        run: |
+          echo "🔄 Pinging Streamlit app to keep it awake..."
+          
+          # Replace YOUR_APP_URL with your actual Streamlit app URL
+          # Example: https://your-username-medreel-analyzer.streamlit.app
+          APP_URL="https://instagramreelbuster.streamlit.app/"
+          
+          # Send HTTP request to wake up the app
+          HTTP_STATUS=$(curl -o /dev/null -s -w "%{http_code}" $APP_URL)
+          
+          echo "📡 HTTP Status Code: $HTTP_STATUS"
+          
+          if [ $HTTP_STATUS -eq 200 ] || [ $HTTP_STATUS -eq 302 ]; then
+            echo "✅ App is awake and responding!"
+          else
+            echo "⚠️ App returned status $HTTP_STATUS - may need attention"
+          fi
+          
+          echo "⏰ Ping completed at: $(date)"
+      
+      - name: Log Success
+        if: success()
+        run: echo "✅ Keep-alive job completed successfully"
+      
+      - name: Log Failure
+        if: failure()
+        run: echo "❌ Keep-alive job failed - check app URL"
