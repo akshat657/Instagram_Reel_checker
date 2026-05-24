@@ -64,11 +64,11 @@ async def analyze_reel(request: AnalyzeRequest):
                 detail=f"Failed to download Instagram reel: {str(e)}"
             )
 
-        # Step 2: Transcribe audio with Groq Whisper
-        print("🎤 Step 2/7: Transcribing audio with Groq Whisper...")
+        # Step 2: Transcribe audio with Google Speech Recognition
+        print(f"🎤 Step 2/7: Transcribing audio ({request.language})...")
         try:
             # Run blocking transcription in thread pool to avoid blocking event loop
-            transcription_result = await asyncio.to_thread(transcribe_audio, audio_path)
+            transcription_result = await asyncio.to_thread(transcribe_audio, audio_path, request.language)
             transcript = transcription_result["text"]
             detected_language_code = transcription_result["language"]
             detected_language = transcription_result["language_name"]
@@ -80,11 +80,6 @@ async def analyze_reel(request: AnalyzeRequest):
                 status_code=500,
                 detail=f"Transcription failed: {str(e)}"
             )
-
-        # Override detected language if user specified one
-        if request.language != "auto":
-            detected_language = request.language
-            print(f"   User specified language: {detected_language}")
 
         # Step 3: Correct transcript grammar
         print(f"✍️ Step 3/7: Correcting {detected_language} transcript grammar...")
