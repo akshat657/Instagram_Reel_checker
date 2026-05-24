@@ -1,0 +1,24 @@
+name: Keep Backend Awake
+
+on:
+  schedule:
+    # Run every 10 minutes (prevents Render free tier from sleeping)
+    - cron: '*/10 * * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  ping-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Backend Health Endpoint
+        run: |
+          echo "Pinging backend to keep it awake..."
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://medreel-backend.onrender.com/api/health)
+          if [ $response -eq 200 ]; then
+            echo "✅ Backend is awake (HTTP $response)"
+          else
+            echo "⚠️ Backend returned HTTP $response"
+          fi
+
+      - name: Log Timestamp
+        run: echo "Last ping at $(date)"

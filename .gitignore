@@ -1,6 +1,9 @@
 # Environment variables
 .env
 
+# MCP configuration (contains API keys)
+.mcp.json
+
 # Python
 __pycache__/
 *.py[cod]
@@ -56,3 +59,25 @@ transcript.txt
 
 # Logs
 *.log
+
+# Node/Frontend
+node_modules/
+frontend/dist/
+*.local
+
+# Audio files
+audio_files/
+*.mp3
+*.wav
+*.m4a
+
+# Stitch exports (designs already extracted)
+stitch_medreel_fact_check_analyzer/
+stitch_medreel_fact_check_analyzer.zip
+
+# Old files (not needed for new deployment)
+app.py
+a.py
+
+# Claude workspace
+.claude/
