@@ -124,19 +124,19 @@ def transcribe_audio_google(audio_path: str, language: str = "English") -> Dict[
 
 
 # Main function used by routes
-def transcribe_audio(audio_path: str, language: str = "auto") -> Dict[str, any]:
+def transcribe_audio(audio_path: str, language: str) -> Dict[str, any]:
     """
     Transcribe audio - uses Google Speech Recognition
 
     Args:
         audio_path: Path to audio file
-        language: "auto", "English", or "Hindi"
+        language: "English" or "Hindi" (required)
 
     Returns:
         Dict with text, language, language_name
     """
-    # If auto-detect, default to English (can improve later)
-    if language == "auto":
-        language = "English"
+    # Validate language
+    if language not in ["English", "Hindi"]:
+        raise ValueError(f"Language must be 'English' or 'Hindi', got: {language}")
 
     return transcribe_audio_google(audio_path, language)

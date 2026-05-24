@@ -9,7 +9,7 @@ import { Link, Activity, Microscope } from 'lucide-react';
  */
 function Home({ onAnalyze, theme }) {
   const [url, setUrl] = useState('');
-  const [language, setLanguage] = useState('auto');
+  const [language, setLanguage] = useState('');
   const [error, setError] = useState('');
 
   const handleSubmit = (e) => {
@@ -24,6 +24,12 @@ function Home({ onAnalyze, theme }) {
 
     if (!url.includes('instagram.com/reel/') && !url.includes('instagram.com/p/')) {
       setError('Please enter a valid Instagram Reel or Post URL');
+      return;
+    }
+
+    // Validate language selection
+    if (!language) {
+      setError('Please select audio language (English or Hindi)');
       return;
     }
 
@@ -97,6 +103,7 @@ function Home({ onAnalyze, theme }) {
               <select
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
+                required
                 className={`
                   px-6 py-4 rounded-xl font-bold text-sm uppercase tracking-wider cursor-pointer
                   ${isDark
@@ -105,9 +112,10 @@ function Home({ onAnalyze, theme }) {
                   }
                   border focus:outline-none focus:ring-2
                   ${isDark ? 'focus:ring-cyber-accent' : 'focus:ring-clinical-accent'}
+                  ${!language ? 'opacity-60' : ''}
                 `}
               >
-                <option value="auto">AUTO</option>
+                <option value="" disabled>SELECT LANGUAGE</option>
                 <option value="English">ENGLISH</option>
                 <option value="Hindi">HINDI</option>
               </select>
