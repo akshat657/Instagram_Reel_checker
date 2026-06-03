@@ -71,32 +71,32 @@ function App() {
         : 'bg-gradient-to-br from-clinical-bg-primary to-clinical-bg-secondary text-clinical-text-primary'
       }
     `}>
-      {/* Header: Theme Toggle + GitHub Profile */}
+      {/* Header: Theme Toggle + Developer Credit */}
       <div className="fixed top-6 right-6 z-50 flex items-center gap-3">
-        {/* GitHub Profile */}
+        {/* Developer Credit */}
         <a
           href="https://github.com/akshat657"
           target="_blank"
           rel="noopener noreferrer"
           className={`
-            flex items-center gap-3 px-4 py-2 rounded-full
+            flex items-center gap-4 px-6 py-4 rounded-2xl
             ${theme === 'dark' ? 'glass-dark border-cyber-accent/30' : 'glass-light border-clinical-accent/30'}
             border transition-all hover:scale-105
-            ${theme === 'dark' ? 'hover:border-cyber-accent' : 'hover:border-clinical-accent'}
+            ${theme === 'dark' ? 'hover:border-cyber-accent hover:shadow-lg hover:shadow-cyber-accent/20' : 'hover:border-clinical-accent hover:shadow-lg hover:shadow-clinical-accent/20'}
           `}
           title="GitHub - Akshat Khandelwal"
         >
           <img
             src="https://github.com/akshat657.png"
             alt="Akshat Khandelwal"
-            className="w-10 h-10 rounded-full ring-2 ring-offset-2 ring-offset-transparent"
-            style={{
-              ringColor: theme === 'dark' ? '#00d9ff' : '#3b82f6'
-            }}
+            className={`w-16 h-16 rounded-full border-3 ${theme === 'dark' ? 'border-cyber-accent/50' : 'border-clinical-accent/50'} shadow-lg`}
           />
-          <span className={`font-semibold text-sm ${theme === 'dark' ? 'text-cyber-text-primary' : 'text-clinical-text-primary'}`}>
-            Akshat
-          </span>
+          <div className="flex flex-col">
+            <span className="text-sm opacity-60 font-medium">Developed by</span>
+            <span className={`font-bold text-lg ${theme === 'dark' ? 'text-cyber-accent' : 'text-clinical-accent'}`}>
+              Akshat
+            </span>
+          </div>
         </a>
 
         {/* Theme Toggle */}
