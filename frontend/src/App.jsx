@@ -5,6 +5,7 @@ import Home from './pages/Home';
 import Analyzing from './pages/Analyzing';
 import Results from './pages/Results';
 import ThemeToggle from './components/ThemeToggle';
+import LeftSidebar from './components/LeftSidebar';
 
 /**
  * Main App Component
@@ -71,6 +72,9 @@ function App() {
         : 'bg-gradient-to-br from-clinical-bg-primary to-clinical-bg-secondary text-clinical-text-primary'
       }
     `}>
+      {/* Left Sidebar: About + Social Links */}
+      <LeftSidebar theme={theme} />
+
       {/* Header: Theme Toggle + Developer Credit */}
       <div className="fixed top-6 right-6 z-50 flex items-center gap-3">
         {/* Developer Credit */}
