@@ -71,8 +71,31 @@ function App() {
         : 'bg-gradient-to-br from-clinical-bg-primary to-clinical-bg-secondary text-clinical-text-primary'
       }
     `}>
-      {/* Theme Toggle Button */}
-      <ThemeToggle theme={theme} onToggle={toggleTheme} />
+      {/* Header: Theme Toggle + GitHub Profile */}
+      <div className="fixed top-6 right-6 z-50 flex items-center gap-3">
+        {/* GitHub Profile */}
+        <a
+          href="https://github.com/akshat657"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`
+            flex items-center gap-2 px-3 py-2 rounded-full
+            ${theme === 'dark' ? 'glass-dark border-cyber-accent/30' : 'glass-light border-clinical-accent/30'}
+            border transition-all hover:scale-105
+            ${theme === 'dark' ? 'hover:border-cyber-accent' : 'hover:border-clinical-accent'}
+          `}
+          title="GitHub Profile"
+        >
+          <img
+            src="https://github.com/akshat657.png"
+            alt="GitHub Profile"
+            className="w-8 h-8 rounded-full"
+          />
+        </a>
+
+        {/* Theme Toggle */}
+        <ThemeToggle theme={theme} onToggle={toggleTheme} />
+      </div>
 
       {/* Page Content with AnimatePresence for smooth transitions */}
       <AnimatePresence mode="wait">

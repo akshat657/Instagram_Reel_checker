@@ -10,7 +10,6 @@ function ThemeToggle({ theme, onToggle }) {
     <button
       onClick={onToggle}
       className={`
-        fixed top-6 right-6 z-50
         p-3 rounded-full
         transition-all duration-300 transform hover:scale-110
         ${theme === 'dark'
