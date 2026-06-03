@@ -79,18 +79,24 @@ function App() {
           target="_blank"
           rel="noopener noreferrer"
           className={`
-            flex items-center gap-2 px-3 py-2 rounded-full
+            flex items-center gap-3 px-4 py-2 rounded-full
             ${theme === 'dark' ? 'glass-dark border-cyber-accent/30' : 'glass-light border-clinical-accent/30'}
             border transition-all hover:scale-105
             ${theme === 'dark' ? 'hover:border-cyber-accent' : 'hover:border-clinical-accent'}
           `}
-          title="GitHub Profile"
+          title="GitHub - Akshat Khandelwal"
         >
           <img
             src="https://github.com/akshat657.png"
-            alt="GitHub Profile"
-            className="w-8 h-8 rounded-full"
+            alt="Akshat Khandelwal"
+            className="w-10 h-10 rounded-full ring-2 ring-offset-2 ring-offset-transparent"
+            style={{
+              ringColor: theme === 'dark' ? '#00d9ff' : '#3b82f6'
+            }}
           />
+          <span className={`font-semibold text-sm ${theme === 'dark' ? 'text-cyber-text-primary' : 'text-clinical-text-primary'}`}>
+            Akshat
+          </span>
         </a>
 
         {/* Theme Toggle */}
